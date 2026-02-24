@@ -589,7 +589,7 @@
             pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, pdfImgHeight);
         }
 
-        pdf.save(`Soal_CyberQR_${new Date().getTime()}.pdf`);
+        pdf.save(`Soal Ulangan SMAN 12 KAUR${new Date().getTime()}.pdf`);
         alert("PDF Berhasil diunduh!");
     }
 
@@ -703,7 +703,7 @@
         });
 
         Packer.toBlob(doc).then(blob => {
-            saveAs(blob, `Soal_CyberQR_${new Date().getTime()}.docx`);
+            saveAs(blob, `Soal Ulangan SMAN 12 KAUR{new Date().getTime()}.docx`);
             alert("File Word berhasil diunduh!");
         }).catch(err => {
             console.error(err);
