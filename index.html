@@ -11,7 +11,32 @@
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
     
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+ 
+  
+  <script>
+  window.MathJax = {
+    tex: {
+      inlineMath: [['$', '$'], ['\\(', '\\)']],
+      displayMath: [['$$', '$$'], ['\\[', '\\]']],
+      processEscapes: true,
+      processEnvironments: true
+    },
+    options: {
+      skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+    },
+    startup: {
+      pageReady: () => {
+        return MathJax.startup.defaultPageReady();
+      }
+    }
+  };
+</script>
+<script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
     <style>
@@ -112,6 +137,20 @@
             border-radius: 8px; cursor: pointer; font-size: 11px;
         }
 
+        .math-tool-btn {
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            color: var(--neon);
+            padding: 5px 10px;
+            font-size: 14px;
+            margin: 2px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: "Times New Roman", serif;
+        }
+
+        .math-tool-btn:hover { background: var(--neon); color: black; }
+
         .page {
             width: 794px; background: #fff; color: #333;
             margin: 20px auto; border-radius: 5px;
@@ -120,13 +159,13 @@
 
         .soal-print-item {
             border-bottom: 1px dotted #ccc;
-            padding: 5px 0;
-            margin-bottom: 2px;
+            padding: 10px 0;
+            margin-bottom: 5px;
         }
         
         .soal-print-item p {
             margin: 2px 0;
-            line-height: 1.2;
+            line-height: 1.4;
         }
 
         .soal-print-item:last-child { border-bottom: none; }
@@ -201,7 +240,7 @@
 
     <div class="section">
         <h3>02. Pertanyaan</h3>
-        <p style="font-size: 11px; opacity: 0.7; margin-top: -10px;">Pilih target kelas spesifik atau kosongkan untuk semua kelas.</p>
+        <p style="font-size: 11px; opacity: 0.7; margin-top: -10px;">Pilih target kelas spesifik. Klik tombol simbol untuk memasukkan rumus matematika.</p>
         <div id="containerSoal"></div>
         <button onclick="tambahInputSoal()" style="width: 100%; background: #0ea5e9;">+ TAMBAHKAN SOAL BARU</button>
     </div>
@@ -220,6 +259,21 @@
     let listSoal = [];
     let OPSI_KELAS = ["X MIPA", "X IPS", "XI MIPA", "XI IPS", "XII MIPA", "XII IPS"];
 
+    const MATH_SYMBOLS = [
+        { label: 'Pecahan', code: '\\\\frac{a}{b}' },
+        { label: 'Akar', code: '\\sqrt{x}' },
+        { label: 'Pangkat', code: 'x^{2}' },
+        { label: 'Subskrip', code: 'x_{1}' },
+        { label: 'Integral', code: '\\int_{a}^{b} f(x) dx' },
+        { label: 'Limit', code: '\\lim_{x \\to \\infty}' },
+        { label: 'Sigma', code: '\\sum_{i=1}^{n}' },
+        { label: 'Alpha', code: '\\alpha' },
+        { label: 'Beta', code: '\\beta' },
+        { label: 'Pi', code: '\\pi' },
+        { label: 'Vektor', code: '\\\\overrightarrow{}' },
+        { label: 'Log', code: '\\log_{10}' }
+    ];
+
     function toggleTheme() {
         const html = document.documentElement;
         const btnText = document.getElementById("themeText");
@@ -232,6 +286,74 @@
             btnText.innerText = "Mode Gelap"; btnIcon.innerText = "🌙";
         }
     }
+
+  
+  function insertMath(id, code) {
+    const textarea = document.getElementById(`text-${id}`);
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    
+    // Gunakan template literal agar backslash aman
+    const replacement = `$${code}$`; 
+    
+    textarea.value = text.substring(0, start) + replacement + text.substring(end);
+    
+    // Penting: Update array listSoal secara manual
+    const soal = listSoal.find(s => s.id == id);
+    if(soal) soal.teks = textarea.value;
+
+    textarea.focus();
+    // Atur kursor agar user bisa langsung mengetik di dalam kurung kurawal
+    const cursorOffset = code.indexOf('{') !== -1 ? code.indexOf('{') + 2 : code.length + 1;
+    textarea.setSelectionRange(start + cursorOffset, start + cursorOffset);
+}
+
+   
+    function preview() {
+    if(!dataPeserta.length) return alert("Belum ada data peserta!");
+    let html = "";
+    let countTerpakai = 0;
+
+    dataPeserta.forEach(p => {
+        const soalTersaring = filterSoalValidUntukKelas(p.kelas);
+        if(soalTersaring.length === 0) return; 
+
+        countTerpakai++;
+        html += `<div class="page pdf-page" style="padding:20px; border-bottom:2px dashed #ccc; margin-bottom: 20px; color: #000; background: #fff;">
+            <div style="display:flex; justify-content:space-between; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:10px;">
+                <div>
+                    <h1 style="margin:0; font-size:18px;">${p.nama.toUpperCase()}</h1>
+                    <p style="margin:2px 0; font-size:12px;">MAPEL: <b>${p.mapel}</b> | KELAS: ${p.kelas} | RUANG: ${p.ruangan}</p>
+                </div>
+                <img src="${p.qr}" width="60" style="border:1px solid #000; padding:2px;">
+            </div>`;
+        
+        html += soalTersaring.map((s, idx) => `
+            <div class="soal-print-item">
+                <small style="color:#666; font-size:9px; display:block;">SOAL ${idx+1}</small>
+                <div class="math-render-area" style="margin:5px 0; font-size:16px; line-height:1.5;">
+                    ${s.teks ? s.teks.replace(/\n/g, '<br>') : ''}
+                </div>
+                ${s.gambar ? `<img src="${s.gambar}" style="width:${s.lebar}px; margin-top:5px; display:block;">` : ''}
+            </div>
+        `).join("");
+        
+        html += `</div>`;
+    });
+
+    const previewArea = document.getElementById("previewArea");
+    previewArea.innerHTML = html;
+
+    // PAKSA MATHJAX UNTUK MERENDER ULANG
+    if (window.MathJax) {
+        MathJax.typesetPromise([previewArea]).then(() => {
+            console.log("Rendering Matematika Selesai");
+        }).catch((err) => console.log("Render gagal:", err));
+    }
+
+    window.scrollTo({ top: previewArea.offsetTop, behavior: 'smooth' });
+}
 
     function updateSemuaMapel() {
         const mapelBaru = document.getElementById("globalMapel").value.trim();
@@ -280,16 +402,23 @@
             </label>
         `).join("");
 
+        let mathButtons = MATH_SYMBOLS.map(sym => `
+            <button type="button" class="math-tool-btn" onclick="insertMath('${id}', '${sym.code}')">${sym.label}</button>
+        `).join("");
+
         div.innerHTML = `
             <div style="display:flex; justify-content:space-between; margin-bottom:15px; align-items:center;">
-                <span style="font-size:10px; font-weight:bold; letter-spacing:2px;">KONFIGURASI SOAL</span>
+                <span style="font-size:10px; font-weight:bold; letter-spacing:2px;">KONFIGURASI SOAL & MATEMATIKA</span>
                 <button onclick="hapusInputSoal('${id}')" style="background:var(--danger); padding:5px 10px; margin:0;">Hapus</button>
             </div>
             <div class="checkbox-group" id="cb-group-${id}" style="margin-bottom:15px; display:flex; flex-wrap:wrap; gap:5px;">
                 ${checkboxesHtml}
             </div>
+            <div style="margin-bottom:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:10px; display:flex; flex-wrap:wrap; gap:2px;">
+                ${mathButtons}
+            </div>
             <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-                <textarea style="flex:1; min-width: 250px;" placeholder="Masukkan konten soal..." oninput="updateSoalTeks('${id}', this.value)"></textarea>
+                <textarea id="text-${id}" style="flex:1; min-width: 250px;" placeholder="Masukkan konten soal (Gunakan $...$ untuk rumus manual)..." oninput="updateSoalTeks('${id}', this.value)"></textarea>
                 <img id="img-${id}" style="max-width:150px; border-radius:10px; display:none; border:1px solid var(--neon);">
             </div>
             <div style="display:flex; gap:20px; align-items:center; margin-top:15px; flex-wrap:wrap;">
@@ -332,7 +461,6 @@
     }
     function hapusInputSoal(id) { document.getElementById(`item-${id}`).remove(); listSoal = listSoal.filter(s => s.id != id); }
 
-    // ASYNC QR GENERATOR TO PREVENT FREEZE
     function generateQRAsync(text) {
         return new Promise((resolve) => {
             const temp = document.createElement("div");
@@ -432,12 +560,10 @@
                         }
                     }
 
-                    // Update UI Progress every 5 items to keep browser responsive
                     if (i % 5 === 0 || i === total - 1) {
                         const percent = Math.round(((i + 1) / total) * 100);
                         progressText.innerText = percent + "%";
                         progressCount.innerText = `${i + 1} / ${total} Data`;
-                        // This tiny pause allows browser to update DOM and prevent "Not Responding"
                         await new Promise(resolve => setTimeout(resolve, 1));
                     }
                 }
@@ -465,45 +591,56 @@
         });
     }
 
-    function preview() {
-        if(!dataPeserta.length) return alert("Belum ada data peserta!");
-        let html = "";
-        let countTerpakai = 0;
+    
+  function preview() {
+    if(!dataPeserta.length) return alert("Belum ada data peserta!");
+    let html = "";
+    let countTerpakai = 0;
 
-        dataPeserta.forEach(p => {
-            const soalTersaring = filterSoalValidUntukKelas(p.kelas);
-            if(soalTersaring.length === 0) return; 
+    dataPeserta.forEach(p => {
+        const soalTersaring = filterSoalValidUntukKelas(p.kelas);
+        if(soalTersaring.length === 0) return; 
 
-            countTerpakai++;
-            html += `<div class="page pdf-page" style="padding:20px; border-bottom:2px dashed #ccc; margin-bottom: 20px;">
-                <div style="display:flex; justify-content:space-between; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:10px;">
-                    <div>
-                        <h1 style="margin:0; font-size:18px;">${p.nama.toUpperCase()}</h1>
-                        <p style="margin:2px 0; font-size:12px;">MAPEL: <b>${p.mapel}</b> | KELAS: ${p.kelas} | RUANG: ${p.ruangan}</p>
-                    </div>
-                    <img src="${p.qr}" width="60" style="border:1px solid #000; padding:2px;">
-                </div>`;
-            
-            html += soalTersaring.map((s, idx) => `
-                <div class="soal-print-item">
-                    <small style="color:#666; font-size:9px; display:block;">SOAL ${idx+1}</small>
-                    <p style="margin:0; font-size:14px; line-height:1.2;">${s.teks || ''}</p>
-                    ${s.gambar ? `<img src="${s.gambar}" style="width:${s.lebar}px; margin-top:3px; display:block;">` : ''}
+        countTerpakai++;
+        html += `<div class="page pdf-page" style="padding:20px; border-bottom:2px dashed #ccc; margin-bottom: 20px;">
+            <div style="display:flex; justify-content:space-between; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:10px;">
+                <div>
+                    <h1 style="margin:0; font-size:18px;">${p.nama.toUpperCase()}</h1>
+                    <p style="margin:2px 0; font-size:12px;">MAPEL: <b>${p.mapel}</b> | KELAS: ${p.kelas} | RUANG: ${p.ruangan}</p>
                 </div>
-            `).join("");
-            
-            html += `</div>`;
-        });
+                <img src="${p.qr}" width="60" style="border:1px solid #000; padding:2px;">
+            </div>`;
+        
+        html += soalTersaring.map((s, idx) => `
+            <div class="soal-print-item">
+                <small style="color:#666; font-size:9px; display:block;">SOAL ${idx+1}</small>
+                <div class="math-content" style="margin:0; font-size:14px; line-height:1.4;">${s.teks || ''}</div>
+                ${s.gambar ? `<img src="${s.gambar}" style="width:${s.lebar}px; margin-top:3px; display:block;">` : ''}
+            </div>
+        `).join("");
+        
+        html += `</div>`;
+    });
 
-        if(countTerpakai === 0) {
-            alert("Tidak ada konten soal yang valid untuk ditampilkan!");
-            document.getElementById("previewArea").innerHTML = "";
-            return;
-        }
-
-        document.getElementById("previewArea").innerHTML = html;
-        window.scrollTo({ top: document.getElementById("previewArea").offsetTop, behavior: 'smooth' });
+    if(countTerpakai === 0) {
+        alert("Tidak ada konten soal yang valid untuk ditampilkan!");
+        document.getElementById("previewArea").innerHTML = "";
+        return;
     }
+
+    // Update isi preview area
+    const previewArea = document.getElementById("previewArea");
+    previewArea.innerHTML = html;
+
+    // --- BAGIAN KRUSIAL: Memaksa MathJax merender ulang ---
+    if (window.MathJax) {
+        MathJax.typesetPromise([previewArea]).then(() => {
+            console.log("Matematika berhasil dirender!");
+        }).catch((err) => console.log("Gagal render:", err));
+    }
+
+    window.scrollTo({ top: previewArea.offsetTop, behavior: 'smooth' });
+}
 
     async function exportPDF() {
         const pages = document.querySelectorAll(".pdf-page");
@@ -512,6 +649,7 @@
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pageWidth = pdf.internal.pageSize.getWidth();
         for (let i = 0; i < pages.length; i++) {
+            // Kita tunggu MathJax selesai render sebelum ambil screenshot
             const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true });
             const imgData = canvas.toDataURL('image/jpeg', 0.95);
             if (i > 0) pdf.addPage();
@@ -521,6 +659,8 @@
     }
 
     async function exportWord() {
+        // Fitur ekspor Word menggunakan text standar. 
+        // Catatan: Rumus matematika $...$ akan tampil sebagai text LaTeX di Word.
         if (!dataPeserta.length) return alert("Data kosong!");
         const { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType, BorderStyle, Table, TableRow, TableCell, WidthType, PageBreak } = docx;
         const allChildren = [];
@@ -580,7 +720,7 @@
         }
 
         if(!validExport) return alert("Tidak ada data soal yang valid untuk diekspor!");
-        allChildren.pop(); // Remove last page break
+        allChildren.pop(); 
 
         const doc = new Document({ sections: [{ children: allChildren }] });
         Packer.toBlob(doc).then(blob => { saveAs(blob, `Soal_Generator_SMAN.docx`); });
