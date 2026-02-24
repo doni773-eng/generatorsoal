@@ -169,83 +169,37 @@
             background: rgba(112, 0, 255, 0.1);
         }
 
+        /* --- PERBAIKAN TAMPILAN PRATINJAU AGAR RAPAT --- */
         .page {
             width: 794px; background: #fff; color: #333;
-            margin: 40px auto; border-radius: 10px;
-            box-shadow: 0 0 40px rgba(0, 0, 0, 0.2);
+            margin: 20px auto; border-radius: 5px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
         }
+
+        .soal-print-item {
+            border-bottom: 1px solid #eee;
+            padding: 8px 0; 
+            margin-bottom: 5px;
+        }
+
+        .soal-print-item:last-child { border-bottom: none; }
         
         .excel-btn { background: #10b981; }
         .reset-btn { background: var(--danger); }
         .pdf-btn { background: #e11d48; }
 
-/* --- RESPONSIVE MOBILE FIX --- */
-@media (max-width: 768px) {
-    body {
-        padding: 10px 0; /* Kurangi padding luar di mobile */
-    }
-
-    .container {
-        padding: 20px; /* Padding dalam lebih kecil */
-        border-radius: 15px; /* Radius lebih kecil agar tidak makan tempat */
-    }
-
-    h2 {
-        font-size: 1.8rem; /* Judul lebih kecil di HP */
-        letter-spacing: 2px;
-    }
-
-    /* Ubah grid 2 kolom menjadi 1 kolom di mobile */
-    .section div[style*="grid-template-columns"] {
-        grid-template-columns: 1fr !important; 
-        gap: 10px !important;
-    }
-
-    /* Tombol-tombol di bagian bawah agar bertumpuk rapi */
-    .section[style*="display: flex"] {
-        flex-direction: column;
-    }
-
-    .section[style*="display: flex"] button {
-        width: 100%;
-        margin-bottom: 5px;
-    }
-
-    /* Perbaikan Area Pratinjau (Page) */
-    .page {
-        width: 100% !important; /* Paksa lebar 100% di layar kecil */
-        margin: 10px 0;
-        padding: 15px !important;
-        box-shadow: none;
-        border: 1px solid #ddd;
-    }
-
-    /* Header pratinjau agar tidak berantakan */
-    .page div[style*="display:flex"] {
-        flex-direction: column-reverse; /* QR di bawah Nama atau sebaliknya */
-        align-items: center;
-        text-align: center;
-        gap: 15px;
-    }
-
-    /* Input gambar & range di bagian soal */
-    .soal-item div[style*="display:flex"] {
-        flex-direction: column;
-    }
-
-    /* Ukuran teks input */
-    input, textarea, button {
-        font-size: 14px !important;
-    }
-
-    /* Posisi tombol theme switch di mobile */
-    .theme-switch {
-        top: 10px;
-        right: 10px;
-        padding: 8px 12px;
-        font-size: 12px;
-    }
-}
+        @media (max-width: 768px) {
+            body { padding: 10px 0; }
+            .container { padding: 20px; border-radius: 15px; }
+            h2 { font-size: 1.8rem; letter-spacing: 2px; }
+            .section div[style*="grid-template-columns"] { grid-template-columns: 1fr !important; gap: 10px !important; }
+            .section[style*="display: flex"] { flex-direction: column; }
+            .section[style*="display: flex"] button { width: 100%; margin-bottom: 5px; }
+            .page { width: 100% !important; margin: 10px 0; padding: 15px !important; box-shadow: none; border: 1px solid #ddd; }
+            .page div[style*="display:flex"] { flex-direction: column-reverse; align-items: center; text-align: center; gap: 15px; }
+            input, textarea, button { font-size: 14px !important; }
+            .theme-switch { top: 10px; right: 10px; padding: 8px 12px; font-size: 12px; }
+        }
     </style>
 </head>
 <body>
@@ -272,10 +226,10 @@
                 <button onclick="updateMasterKelas()" style="background: var(--neon2);">Sinkron</button>
             </div>
         </div>
-
-        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px;">
+        <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px;">
             <input type="text" id="nama" placeholder="Nama Lengkap">
             <input type="text" id="kelas" placeholder="Kelas">
+            <input type="text" id="mapel" placeholder="Mata Pelajaran">
             <input type="text" id="ruangan" placeholder="Ruangan">
         </div>
         <div style="display: flex; gap: 10px;">
@@ -302,7 +256,6 @@
 </div>
 
 <script>
-    // --- FITUR DARK/LIGHT MODE ---
     function toggleTheme() {
         const html = document.documentElement;
         const btnText = document.getElementById("themeText");
@@ -321,7 +274,6 @@
         }
     }
 
-    // Load saved theme
     const savedTheme = localStorage.getItem("theme") || "dark";
     document.documentElement.setAttribute("data-theme", savedTheme);
     if(savedTheme === "light") {
@@ -329,7 +281,6 @@
         document.getElementById("themeIcon").innerText = "☀️";
     }
 
-    // --- LOGIKA CORE GENERATOR ---
     let dataPeserta = [];
     let listSoal = [];
     let OPSI_KELAS = ["X MIPA", "X IPS", "XI MIPA", "XI IPS", "XII MIPA", "XII IPS"];
@@ -396,10 +347,7 @@
         listSoal.push({ id: id, teks: "", gambar: null, lebar: 200, targetKelas: [] });
     }
 
-    function updateSoalTeks(id, val) {
-        const soal = listSoal.find(s => s.id == id);
-        if(soal) soal.teks = val;
-    }
+    function updateSoalTeks(id, val) { const soal = listSoal.find(s => s.id == id); if(soal) soal.teks = val; }
 
     function updateSoalKelas(id) {
         const soal = listSoal.find(s => s.id == id);
@@ -455,13 +403,14 @@
     function tambahManual(){
         const n = document.getElementById("nama").value;
         const k = document.getElementById("kelas").value.toUpperCase();
+        const m = document.getElementById("mapel").value; // Mapel
         const r = document.getElementById("ruangan").value;
         if(!n || !k) return alert("Nama dan Kelas wajib diisi!");
-        
         buatQR(`${n}`, qr => {
-            dataPeserta.push({nama:n, kelas:k, ruangan:r||'-', qr});
+            dataPeserta.push({nama:n, kelas:k, mapel:m||'-', ruangan:r||'-', qr});
             renderPeserta();
             document.getElementById("nama").value = "";
+            document.getElementById("mapel").value = "";
         });
     }
 
@@ -470,7 +419,7 @@
         container.innerHTML = dataPeserta.map((p, i) => `
             <div class="peserta-card">
                 <b style="color:var(--neon2)">${p.nama}</b><br>
-                <small>${p.kelas} • Ruang ${p.ruangan}</small>
+                <small>${p.kelas} • ${p.mapel} • R.${p.ruangan}</small>
                 <button onclick="hapusPeserta(${i})" style="background:var(--danger); padding:2px 8px; margin-left:10px;">✕</button>
             </div>
         `).join("");
@@ -498,10 +447,11 @@
             rows.forEach(r => {
                 const n = r.Nama || r.nama || r.NAMA;
                 const k = (r.Kelas || r.kelas || r.KELAS || "").toString().toUpperCase().trim();
+                const m = r.Mapel || r.mapel || r.MAPEL || '-';
                 const ru = r.Ruangan || r.ruangan || '-';
                 if(n && k) {
                     buatQR(`${n}`, qr => {
-                        dataPeserta.push({nama:n, kelas:k, ruangan:ru, qr});
+                        dataPeserta.push({nama:n, kelas:k, mapel:m, ruangan:ru, qr});
                         renderPeserta();
                     });
                 }
@@ -523,23 +473,23 @@
         let html = "";
         dataPeserta.forEach(p => {
             const soalTersaring = filterSoalUntukKelas(p.kelas);
-            html += `<div class="page pdf-page" style="padding:40px; border-bottom:2px dashed #ccc; margin-bottom: 20px;">
-                <div style="display:flex; justify-content:space-between; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:20px;">
+            html += `<div class="page pdf-page" style="padding:20px; border-bottom:2px dashed #ccc; margin-bottom: 20px;">
+                <div style="display:flex; justify-content:space-between; border-bottom:2px solid #000; padding-bottom:5px; margin-bottom:10px;">
                     <div>
-                        <h1 style="margin:0; font-size:22px;">${p.nama.toUpperCase()}</h1>
-                        <p style="margin:5px 0;">KELAS: ${p.kelas} | RUANG: ${p.ruangan}</p>
+                        <h1 style="margin:0; font-size:18px;">${p.nama.toUpperCase()}</h1>
+                        <p style="margin:2px 0; font-size:12px;">MAPEL: <b>${p.mapel}</b> | KELAS: ${p.kelas} | RUANG: ${p.ruangan}</p>
                     </div>
-                    <img src="${p.qr}" width="80" style="border:1px solid #000; padding:2px;">
+                    <img src="${p.qr}" width="60" style="border:1px solid #000; padding:2px;">
                 </div>`;
             
             if(soalTersaring.length === 0) {
-                html += `<p style="text-align:center; color:#999; margin:50px 0;">- Tidak ada soal untuk kelas ini -</p>`;
+                html += `<p style="text-align:center; color:#999; margin:20px 0;">- Tidak ada soal untuk kelas ini -</p>`;
             } else {
                 html += soalTersaring.map((s, idx) => `
-                    <div style="border:1px solid #000; padding:15px; margin-bottom:15px; border-radius:5px;">
-                        <small style="color:#666">SOAL ${idx+1}</small>
-                        <p style="margin:10px 0; font-size:16px;">${s.teks || '...'}</p>
-                        ${s.gambar ? `<img src="${s.gambar}" style="width:${s.lebar}px; margin-top:10px;">` : ''}
+                    <div class="soal-print-item">
+                        <small style="color:#666; font-size:10px;">SOAL ${idx+1}</small>
+                        <p style="margin:2px 0; font-size:14px; line-height:1.4;">${s.teks || '...'}</p>
+                        ${s.gambar ? `<img src="${s.gambar}" style="width:${s.lebar}px; margin-top:5px; display:block;">` : ''}
                     </div>
                 `).join("");
             }
@@ -549,83 +499,47 @@
         window.scrollTo({ top: document.getElementById("previewArea").offsetTop, behavior: 'smooth' });
     }
 
-    // --- FITUR BARU: EXPORT PDF ---
-    // --- PERBAIKAN FITUR EXPORT PDF ---
     async function exportPDF() {
         const previewArea = document.getElementById("previewArea");
         const pages = previewArea.querySelectorAll(".pdf-page");
-
-        if (pages.length === 0) {
-            alert("Silakan klik tombol 'Pratinjau' terlebih dahulu!");
-            return;
-        }
-
+        if (pages.length === 0) { alert("Silakan klik tombol 'Pratinjau' terlebih dahulu!"); return; }
         const { jsPDF } = window.jspdf;
-        // Gunakan format A4
         const pdf = new jsPDF('p', 'mm', 'a4');
         const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-
         alert("Sedang memproses PDF, mohon tunggu...");
-
         for (let i = 0; i < pages.length; i++) {
-            const canvas = await html2canvas(pages[i], {
-                scale: 2, // Tetap gunakan scale 2 untuk ketajaman teks
-                useCORS: true,
-                logging: false,
-                backgroundColor: "#ffffff" // Pastikan background putih
-            });
-
+            const canvas = await html2canvas(pages[i], { scale: 2, useCORS: true, logging: false, backgroundColor: "#ffffff" });
             const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            
-            // Hitung rasio agar gambar tidak gepeng atau terpotong
             const imgProps = pdf.getImageProperties(imgData);
             const pdfImgHeight = (imgProps.height * pageWidth) / imgProps.width;
-
             if (i > 0) pdf.addPage();
-            
-            // Masukkan gambar dengan lebar menyesuaikan halaman (pageWidth) 
-            // dan tinggi proporsional (pdfImgHeight)
             pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, pdfImgHeight);
         }
-
-        pdf.save(`Soal Ulangan SMAN 12 KAUR${new Date().getTime()}.pdf`);
+        pdf.save(`Soal_Ulangan_${new Date().getTime()}.pdf`);
         alert("PDF Berhasil diunduh!");
     }
 
    async function exportWord() {
         if (!dataPeserta.length) return alert("Data peserta kosong!");
-        
-        // Proteksi jika library belum terload
         if (typeof docx === 'undefined') return alert("Library docx belum siap.");
-
         const { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType, BorderStyle, Table, TableRow, TableCell, WidthType, PageBreak } = docx;
-
         const allChildren = [];
 
         for (let i = 0; i < dataPeserta.length; i++) {
             const p = dataPeserta[i];
             const soalTersaring = filterSoalUntukKelas(p.kelas);
 
-            // --- HEADER PESERTA (Tabel Nama & QR) ---
             allChildren.push(new Table({
                 width: { size: 100, type: WidthType.PERCENTAGE },
-                borders: {
-                    bottom: { style: BorderStyle.SINGLE, size: 24, color: "000000" },
-                    top: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE },
-                },
+                borders: { bottom: { style: BorderStyle.SINGLE, size: 24, color: "000000" }, top: { style: BorderStyle.NONE }, left: { style: BorderStyle.NONE }, right: { style: BorderStyle.NONE } },
                 rows: [
                     new TableRow({
                         children: [
                             new TableCell({
                                 width: { size: 80, type: WidthType.PERCENTAGE },
                                 children: [
-                                    new Paragraph({
-                                        children: [new TextRun({ text: p.nama.toUpperCase(), bold: true, size: 32 })]
-                                    }),
-                                    new Paragraph({
-                                        children: [new TextRun({ text: `KELAS: ${p.kelas} | RUANGAN: ${p.ruangan}`, size: 20 })]
-                                    }),
+                                    new Paragraph({ children: [new TextRun({ text: p.nama.toUpperCase(), bold: true, size: 28 })] }),
+                                    new Paragraph({ children: [new TextRun({ text: `MAPEL: ${p.mapel} | KELAS: ${p.kelas} | RUANGAN: ${p.ruangan}`, size: 18 })] }),
                                 ],
                             }),
                             new TableCell({
@@ -633,12 +547,7 @@
                                 children: [
                                     new Paragraph({
                                         alignment: AlignmentType.RIGHT,
-                                        children: [
-                                            new ImageRun({
-                                                data: Uint8Array.from(atob(p.qr.split(",")[1]), c => c.charCodeAt(0)),
-                                                transformation: { width: 80, height: 80 }
-                                            }),
-                                        ],
+                                        children: [ new ImageRun({ data: Uint8Array.from(atob(p.qr.split(",")[1]), c => c.charCodeAt(0)), transformation: { width: 60, height: 60 } }) ],
                                     }),
                                 ],
                             }),
@@ -647,68 +556,30 @@
                 ],
             }));
 
-            allChildren.push(new Paragraph({ text: "", spacing: { after: 300 } }));
+            allChildren.push(new Paragraph({ text: "", spacing: { after: 100 } }));
 
-            // --- RENDER SOAL ---
             if (soalTersaring.length === 0) {
-                allChildren.push(new Paragraph({
-                    alignment: AlignmentType.CENTER,
-                    children: [new TextRun({ text: "- Tidak ada soal untuk kelas ini -", italics: true, color: "999999" })]
-                }));
+                allChildren.push(new Paragraph({ alignment: AlignmentType.CENTER, children: [new TextRun({ text: "- Tidak ada soal untuk kelas ini -", italics: true, color: "999999" })] }));
             } else {
                 for (let idx = 0; idx < soalTersaring.length; idx++) {
                     const s = soalTersaring[idx];
-                    
-                    allChildren.push(new Paragraph({
-                        children: [new TextRun({ text: `SOAL ${idx + 1}`, bold: true, size: 18, color: "666666" })]
-                    }));
-
-                    allChildren.push(new Paragraph({
-                        spacing: { before: 100, after: 100 },
-                        children: [new TextRun({ text: s.teks || "...", size: 24 })]
-                    }));
+                    allChildren.push(new Paragraph({ children: [new TextRun({ text: `SOAL ${idx + 1}`, bold: true, size: 16, color: "666666" })] }));
+                    allChildren.push(new Paragraph({ spacing: { after: 50 }, children: [new TextRun({ text: s.teks || "...", size: 22 })] }));
 
                     if (s.gambar) {
                         try {
                             const imgData = s.gambar.split(",")[1];
-                            allChildren.push(new Paragraph({
-                                children: [
-                                    new ImageRun({
-                                        data: Uint8Array.from(atob(imgData), c => c.charCodeAt(0)),
-                                        transformation: { 
-                                            width: s.lebar, 
-                                            height: (s.lebar * 0.75) 
-                                        }
-                                    }),
-                                ],
-                            }));
+                            allChildren.push(new Paragraph({ children: [ new ImageRun({ data: Uint8Array.from(atob(imgData), c => c.charCodeAt(0)), transformation: { width: s.lebar, height: (s.lebar * 0.75) } }) ] }));
                         } catch (e) { console.error("Gambar error", e); }
                     }
-
-                    allChildren.push(new Paragraph({
-                        border: { bottom: { style: BorderStyle.DOTTED, size: 6, color: "CCCCCC" } },
-                        spacing: { after: 200 }
-                    }));
+                    allChildren.push(new Paragraph({ border: { bottom: { style: BorderStyle.DOTTED, size: 6, color: "CCCCCC" } }, spacing: { after: 100 } }));
                 }
             }
-
-            // Tambahkan Pemisah Halaman
-            if (i < dataPeserta.length - 1) {
-                allChildren.push(new Paragraph({ children: [new PageBreak()] }));
-            }
+            if (i < dataPeserta.length - 1) { allChildren.push(new Paragraph({ children: [new PageBreak()] })); }
         }
 
-        const doc = new Document({
-            sections: [{ children: allChildren }]
-        });
-
-        Packer.toBlob(doc).then(blob => {
-            saveAs(blob, `Soal Ulangan SMAN 12 KAUR{new Date().getTime()}.docx`);
-            alert("File Word berhasil diunduh!");
-        }).catch(err => {
-            console.error(err);
-            alert("Terjadi kesalahan teknis saat membuat Word.");
-        });
+        const doc = new Document({ sections: [{ children: allChildren }] });
+        Packer.toBlob(doc).then(blob => { saveAs(blob, `Soal_Ulangan_${new Date().getTime()}.docx`); alert("File Word berhasil diunduh!"); });
     }
 </script>
 
