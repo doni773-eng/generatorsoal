@@ -99,6 +99,7 @@
         }
 
         button:hover { transform: translateY(-3px); box-shadow: 0 5px 15px rgba(112, 0, 255, 0.4); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
         .peserta-card {
             background: rgba(112, 0, 255, 0.05); padding: 15px;
@@ -134,6 +135,12 @@
         .reset-btn { background: var(--danger); }
         .pdf-btn { background: #e11d48; }
 
+        #loadingOverlay {
+            display: none; position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.85); z-index: 9999; 
+            flex-direction: column; align-items: center; justify-content: center;
+        }
+
         @media (max-width: 768px) {
             .container { padding: 20px; }
             .page { width: 100% !important; }
@@ -141,6 +148,12 @@
     </style>
 </head>
 <body>
+
+<div id="loadingOverlay">
+    <div style="color:var(--neon); font-size: 20px; font-weight: bold; margin-bottom: 10px;">PROSES IMPORT DATABASE...</div>
+    <div id="progressText" style="color:white; font-size: 24px; font-weight: bold;">0%</div>
+    <div id="progressCount" style="color:rgba(255,255,255,0.6); font-size: 14px; margin-top: 5px;">0 / 0 Data</div>
+</div>
 
 <button class="theme-switch" onclick="toggleTheme()" id="themeBtn">
     <span id="themeIcon">🌙</span> <span id="themeText">Mode Gelap</span>
@@ -154,7 +167,7 @@
         <h3>01. Database & Konfigurasi</h3>
         <div style="display: grid; grid-template-columns: 1fr auto; gap: 15px; margin-bottom: 20px;">
             <input type="file" id="fileExcel" accept=".xlsx,.xls">
-            <button onclick="importExcel()" class="excel-btn">Impor Database (XLSX)</button>
+            <button onclick="importExcel()" id="importBtn" class="excel-btn">Impor Database (XLSX)</button>
         </div>
         
         <div style="margin-bottom: 20px;">
@@ -166,10 +179,10 @@
         </div>
 
         <div style="margin-bottom: 20px; padding: 15px; background: rgba(0, 242, 255, 0.1); border-radius: 12px; border: 1px dashed var(--neon);">
-            <label style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--neon);">Update Massal Mata Pelajaran:</label>
+            <label style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--neon);">MASUKAN MATA PELAJARAN</label>
             <div style="display: flex; gap: 10px; margin-top: 5px;">
                 <input type="text" id="globalMapel" placeholder="Ketik Mapel Baru untuk SEMUA peserta...">
-                <button onclick="updateSemuaMapel()" style="background: var(--success); color: #000; min-width: 150px;">Ubah Semua Mapel</button>
+                <button onclick="updateSemuaMapel()" style="background: var(--success); color: #000; min-width: 150px;">TEKAN UNTUK MENAMBAHKAN MAPEL</button>
             </div>
         </div>
 
@@ -220,19 +233,15 @@
         }
     }
 
-    // FITUR BARU: LOGIKA UPDATE SEMUA MAPEL
     function updateSemuaMapel() {
         const mapelBaru = document.getElementById("globalMapel").value.trim();
         if(!mapelBaru) return alert("Masukkan nama mata pelajaran terlebih dahulu!");
         if(dataPeserta.length === 0) return alert("Belum ada data peserta yang bisa diubah!");
-        
         if(confirm(`Ubah semua mata pelajaran menjadi "${mapelBaru}"?`)) {
-            dataPeserta.forEach(p => {
-                p.mapel = mapelBaru;
-            });
+            dataPeserta.forEach(p => { p.mapel = mapelBaru; });
             renderPeserta();
             alert("Berhasil memperbarui semua mata pelajaran.");
-            document.getElementById("globalMapel").value = ""; // Clear input setelah update
+            document.getElementById("globalMapel").value = "";
         }
     }
 
@@ -323,46 +332,46 @@
     }
     function hapusInputSoal(id) { document.getElementById(`item-${id}`).remove(); listSoal = listSoal.filter(s => s.id != id); }
 
-    function buatQR(text, callback){
-        const temp = document.createElement("div");
-        new QRCode(temp,{text, width:128, height:128, correctLevel: QRCode.CorrectLevel.H});
-        setTimeout(()=>{
-            const img = temp.querySelector("img");
-            if(!img) return;
-            const canvas = document.createElement("canvas");
-            canvas.width=128; canvas.height=128;
-            const ctx=canvas.getContext("2d");
-            ctx.fillStyle="#fff"; ctx.fillRect(0,0,128,128);
-            ctx.drawImage(img,0,0);
-            callback(canvas.toDataURL());
-        },300);
+    // ASYNC QR GENERATOR TO PREVENT FREEZE
+    function generateQRAsync(text) {
+        return new Promise((resolve) => {
+            const temp = document.createElement("div");
+            new QRCode(temp, {
+                text: text, 
+                width: 128, 
+                height: 128, 
+                correctLevel: QRCode.CorrectLevel.H
+            });
+            setTimeout(() => {
+                const img = temp.querySelector("img");
+                if (!img) return resolve("");
+                const canvas = document.createElement("canvas");
+                canvas.width = 128; canvas.height = 128;
+                const ctx = canvas.getContext("2d");
+                ctx.fillStyle = "#fff"; ctx.fillRect(0,0,128,128);
+                ctx.drawImage(img, 0, 0);
+                resolve(canvas.toDataURL());
+            }, 50);
+        });
     }
 
-    function tambahManual(){
+    async function tambahManual() {
         const n = document.getElementById("nama").value;
         const k = document.getElementById("kelas").value.toUpperCase();
         const m = document.getElementById("mapel").value;
         const r = document.getElementById("ruangan").value;
-        
         if(!n || !k) return alert("Nama dan Kelas wajib diisi!");
         
-        buatQR(`${n}`, qr => {
-            dataPeserta.push({
-                nama: n, 
-                kelas: k, 
-                mapel: m || '-', 
-                ruangan: r || '-', 
-                qr
-            }); 
-            
-            renderPeserta();
-            document.getElementById("nama").value = "";
-            document.getElementById("nama").focus(); 
-            console.log("Peserta ditambahkan: " + n);
+        const qr = await generateQRAsync(n);
+        dataPeserta.push({
+            nama: n, kelas: k, mapel: m || '-', ruangan: r || '-', qr: qr
         });
+        renderPeserta();
+        document.getElementById("nama").value = "";
+        document.getElementById("nama").focus();
     }
 
-    function renderPeserta(){
+    function renderPeserta() {
         const container = document.getElementById("daftarPeserta");
         container.innerHTML = dataPeserta.map((p, i) => `
             <div class="peserta-card animate__animated animate__fadeIn">
@@ -382,23 +391,67 @@
     function hapusPeserta(i) { dataPeserta.splice(i, 1); renderPeserta(); }
     function resetData() { if(confirm("Hapus semua data peserta?")) { dataPeserta = []; renderPeserta(); } }
 
-    function importExcel(){
-        const f = document.getElementById("fileExcel").files[0];
+    async function importExcel() {
+        const fileInput = document.getElementById("fileExcel");
+        const f = fileInput.files[0];
         if(!f) return alert("Pilih file excel!");
+
+        const overlay = document.getElementById("loadingOverlay");
+        const progressText = document.getElementById("progressText");
+        const progressCount = document.getElementById("progressCount");
+        const importBtn = document.getElementById("importBtn");
+
+        overlay.style.display = "flex";
+        importBtn.disabled = true;
+
         const reader = new FileReader();
-        reader.onload = e => {
-            const wb = XLSX.read(e.target.result,{type:"array"});
-            const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-            rows.forEach(r => {
-                const n = r.Nama || r.nama || r.NAMA;
-                const k = (r.Kelas || r.kelas || r.KELAS || "").toString().toUpperCase().trim();
-                if(n && k) {
-                    buatQR(`${n}`, qr => {
-                        dataPeserta.push({nama:n, kelas:k, mapel:r.Mata_Pelajaran||'-', ruangan:r.Ruangan||'-', qr});
-                        renderPeserta();
-                    });
+        reader.onload = async (e) => {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, {type: "array"});
+                const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                const total = rows.length;
+
+                for (let i = 0; i < total; i++) {
+                    const r = rows[i];
+                    const n = r.Nama || r.nama || r.NAMA;
+                    const k = (r.Kelas || r.kelas || r.KELAS || "").toString().toUpperCase().trim();
+                    
+                    if (n && k) {
+                        try {
+                            const qr = await generateQRAsync(n.toString());
+                            dataPeserta.push({
+                                nama: n, 
+                                kelas: k, 
+                                mapel: r.Mata_Pelajaran || r.mapel || r.MAPEL || '-', 
+                                ruangan: r.Ruangan || r.ruangan || r.RUANGAN || '-', 
+                                qr: qr
+                            });
+                        } catch (err) {
+                            console.error(`Gagal QR baris ${i}:`, err);
+                        }
+                    }
+
+                    // Update UI Progress every 5 items to keep browser responsive
+                    if (i % 5 === 0 || i === total - 1) {
+                        const percent = Math.round(((i + 1) / total) * 100);
+                        progressText.innerText = percent + "%";
+                        progressCount.innerText = `${i + 1} / ${total} Data`;
+                        // This tiny pause allows browser to update DOM and prevent "Not Responding"
+                        await new Promise(resolve => setTimeout(resolve, 1));
+                    }
                 }
-            });
+
+                renderPeserta();
+                alert(`Berhasil mengimpor ${dataPeserta.length} data.`);
+            } catch (err) {
+                console.error(err);
+                alert("Gagal membaca file Excel!");
+            } finally {
+                overlay.style.display = "none";
+                importBtn.disabled = false;
+                fileInput.value = "";
+            }
         };
         reader.readAsArrayBuffer(f);
     }
@@ -476,11 +529,9 @@
         for (let i = 0; i < dataPeserta.length; i++) {
             const p = dataPeserta[i];
             const soalTersaring = filterSoalValidUntukKelas(p.kelas);
-
             if (soalTersaring.length === 0) continue; 
             
             validExport = true;
-
             allChildren.push(new Table({
                 width: { size: 100, type: WidthType.PERCENTAGE },
                 borders: { bottom: { style: BorderStyle.SINGLE, size: 24 }, top: BorderStyle.NONE, left: BorderStyle.NONE, right: BorderStyle.NONE },
@@ -515,24 +566,24 @@
                 }));
 
                 if (s.gambar) {
-                    const imgData = s.gambar.split(",")[1];
-                    allChildren.push(new Paragraph({ 
-                        spacing: { after: 30 },
-                        children: [ new ImageRun({ data: Uint8Array.from(atob(imgData), c => c.charCodeAt(0)), transformation: { width: s.lebar, height: (s.lebar * 0.7) } }) ] 
-                    }));
+                    try {
+                        const imgData = s.gambar.split(",")[1];
+                        allChildren.push(new Paragraph({ 
+                            spacing: { after: 30 },
+                            children: [ new ImageRun({ data: Uint8Array.from(atob(imgData), c => c.charCodeAt(0)), transformation: { width: s.lebar, height: (s.lebar * 0.7) } }) ] 
+                        }));
+                    } catch(e) { console.error("Gagal insert gambar ke word", e); }
                 }
                 allChildren.push(new Paragraph({ border: { bottom: { style: BorderStyle.DOTTED, size: 4, color: "CCCCCC" } }, spacing: { after: 30 } }));
             }
-            
             allChildren.push(new Paragraph({ children: [new PageBreak()] }));
         }
 
         if(!validExport) return alert("Tidak ada data soal yang valid untuk diekspor!");
-
-        allChildren.pop();
+        allChildren.pop(); // Remove last page break
 
         const doc = new Document({ sections: [{ children: allChildren }] });
-        Packer.toBlob(doc).then(blob => { saveAs(blob, `Soal Ulangan SMAN 12 Kaur.docx`); });
+        Packer.toBlob(doc).then(blob => { saveAs(blob, `Soal_Generator_SMAN.docx`); });
     }
 </script>
 </body>
