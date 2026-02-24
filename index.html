@@ -391,7 +391,6 @@
         });
     }
 
-    // FUNGSI BARU: CEKLIS SEMUA
     function toggleSelectAll(id, checked) {
         const container = document.getElementById(`cb-group-${id}`);
         const checkboxes = container.querySelectorAll('input[type="checkbox"]');
@@ -656,227 +655,209 @@
         window.scrollTo({ top: previewArea.offsetTop, behavior: 'smooth' });
     }
 
-    
-  
-  async function exportPDF() {
-    if (dataPeserta.length === 0) return alert("Belum ada data peserta!");
-    
-    const overlay = document.getElementById("loadingOverlay");
-    overlay.style.display = "flex";
-    document.querySelector("#loadingOverlay div").innerText = "GENERATING PDF...";
-    
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const margin = 15;
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
+   
+  /**
+     * FUNGSI PERBAIKAN: EKSPOR WORD AGAR KODE QR SEJAJAR DENGAN TEKS
+     */
+    async function exportWord() {
+        if (!dataPeserta.length) return alert("Belum ada data!");
+        const overlay = document.getElementById("loadingOverlay");
+        overlay.style.display = "flex";
+        document.querySelector("#loadingOverlay div").innerText = "GENERATING WORD...";
 
-    try {
-        for (let i = 0; i < dataPeserta.length; i++) {
-            const p = dataPeserta[i];
+        const { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType, BorderStyle, Table, TableRow, TableCell, WidthType, VerticalAlign } = docx;
+        const sections = [];
+
+        // Helper untuk dimensi gambar
+        const getImageDimensions = (base64) => {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.onload = () => resolve({ w: img.width, h: img.height });
+                img.src = base64;
+            });
+        };
+
+        for (const p of dataPeserta) {
             const soalTersaring = filterSoalValidUntukKelas(p.kelas);
-            
             if (soalTersaring.length === 0) continue;
-            if (i > 0) pdf.addPage();
 
-            // --- BAGIAN HEADER ---
-            // Nama Peserta (Kiri Atas)
-            pdf.setFontSize(14);
-            pdf.setFont("helvetica", "bold");
-            pdf.text(p.nama.toUpperCase(), margin, 15);
+            const children = [];
+
+            // --- PERBAIKAN HEADER: Menggunakan Tabel agar QR Sejajar ---
+            const qrData = p.qr ? p.qr.split(",")[1] : null;
             
-            // Detail Mapel & Kelas (Di bawah Nama)
-            pdf.setFontSize(9);
-            pdf.setFont("helvetica", "normal");
-            pdf.text(`MAPEL: ${p.mapel} | KELAS: ${p.kelas} | RUANG: ${p.ruangan}`, margin, 20);
-            
-            // QR Code (Kanan Atas)
-            if (p.qr) {
-                // Menempatkan QR agar sejajar dengan teks header
-                pdf.addImage(p.qr, 'PNG', pageWidth - 35, 7, 20, 20);
-            }
+            const headerTable = new Table({
+                width: { size: 100, type: WidthType.PERCENTAGE },
+                borders: {
+                    top: { style: BorderStyle.NONE },
+                    bottom: { color: "000000", space: 1, style: BorderStyle.SINGLE, size: 6 },
+                    left: { style: BorderStyle.NONE },
+                    right: { style: BorderStyle.NONE },
+                    insideHorizontal: { style: BorderStyle.NONE },
+                    insideVertical: { style: BorderStyle.NONE },
+                },
+                rows: [
+                    new TableRow({
+                        children: [
+                            new TableCell({
+                                width: { size: 80, type: WidthType.PERCENTAGE },
+                                verticalAlign: VerticalAlign.BOTTOM,
+                                children: [
+                                    new Paragraph({
+                                        children: [new TextRun({ text: p.nama.toUpperCase(), bold: true, size: 28 })]
+                                    }),
+                                    new Paragraph({
+                                        children: [new TextRun({ text: `MAPEL: ${p.mapel} | KELAS: ${p.kelas} | RUANG: ${p.ruangan}`, size: 18 })]
+                                    }),
+                                ],
+                            }),
+                            new TableCell({
+                                width: { size: 20, type: WidthType.PERCENTAGE },
+                                verticalAlign: VerticalAlign.CENTER,
+                                children: qrData ? [
+                                    new Paragraph({
+                                        alignment: AlignmentType.RIGHT,
+                                        children: [
+                                            new ImageRun({
+                                                data: Uint8Array.from(atob(qrData), c => c.charCodeAt(0)),
+                                                transformation: { width: 60, height: 60 },
+                                            }),
+                                        ],
+                                    }),
+                                ] : [],
+                            }),
+                        ],
+                    }),
+                ],
+            });
 
-            // Garis Pembatas Header (Penting: Koordinat Y harus di bawah teks)
-            pdf.setLineWidth(0.5);
-            pdf.line(margin, 28, pageWidth - margin, 28);
+            children.push(headerTable);
+            children.push(new Paragraph({ text: "", spacing: { after: 200 } })); // Spasi setelah header
 
-            // --- BAGIAN KONTEN SOAL ---
-            let currentY = 35; 
-
+            // --- Render Soal ---
             for (let idx = 0; idx < soalTersaring.length; idx++) {
                 const s = soalTersaring[idx];
                 
-                // Cek sisa halaman sebelum cetak nomor soal
-                if (currentY > pageHeight - 30) { 
-                    pdf.addPage(); 
-                    currentY = 20; 
-                }
+                children.push(new Paragraph({
+                    children: [new TextRun({ text: `SOAL ${idx + 1}`, size: 14, color: "666666" })],
+                    spacing: { before: 100 }
+                }));
 
-                // Label Nomor Soal
-                pdf.setFontSize(8);
-                pdf.setTextColor(100);
-                pdf.text(`SOAL ${idx + 1}`, margin, currentY);
-                currentY += 6;
+                // Pecah teks berdasarkan line break agar format rapi
+                const lines = s.teks.split('\n');
+                lines.forEach(line => {
+                    children.push(new Paragraph({
+                        children: [new TextRun({ text: line, size: 24 })]
+                    }));
+                });
 
-                // Teks Soal (Multi-line)
-                pdf.setFontSize(11);
-                pdf.setTextColor(0);
-                const splitText = pdf.splitTextToSize(s.teks || "", pageWidth - (margin * 2));
-                
-                // Hitung tinggi teks untuk memajukan currentY
-                const textHeight = (splitText.length * (11 * 0.3528)) + 5; 
-                
-                // Cek apakah teks muat di halaman ini
-                if (currentY + textHeight > pageHeight - 15) {
-                    pdf.addPage();
-                    currentY = 20;
-                }
-                
-                pdf.text(splitText, margin, currentY);
-                currentY += textHeight;
-
-                // Gambar Soal
                 if (s.gambar) {
-                    const imgProps = pdf.getImageProperties(s.gambar);
-                    // Konversi lebar input ke mm (asumsi max width soal)
-                    const imgW = Math.min(s.lebar / 3.78, pageWidth - (margin * 2)); 
-                    const imgH = (imgProps.height * imgW) / imgProps.width;
+                    const imgData = s.gambar.split(",")[1];
+                    const dims = await getImageDimensions(s.gambar);
+                    const ratio = dims.h / dims.w;
+                    const finalWidth = s.lebar;
+                    const finalHeight = s.lebar * ratio;
 
-                    // Cek apakah gambar muat
-                    if (currentY + imgH > pageHeight - 15) {
-                        pdf.addPage();
-                        currentY = 20;
+                    children.push(new Paragraph({
+                        children: [
+                            new ImageRun({
+                                data: Uint8Array.from(atob(imgData), c => c.charCodeAt(0)),
+                                transformation: { width: finalWidth, height: finalHeight },
+                            }),
+                        ],
+                        spacing: { before: 100, after: 100 }
+                    }));
+                }
+                
+                // Garis pemisah antar soal (opsional, menggunakan dotted line)
+                children.push(new Paragraph({
+                    border: { bottom: { color: "CCCCCC", space: 1, style: BorderStyle.DASH_SMALL_GAP, size: 4 } },
+                    spacing: { after: 100 }
+                }));
+            }
+
+            sections.push({
+                properties: { type: docx.SectionType.NEXT_PAGE },
+                children: children,
+            });
+        }
+
+        const doc = new Document({ sections: sections });
+        Packer.toBlob(doc).then((blob) => {
+            saveAs(blob, "CyberQR_Exam_Pro.docx");
+            overlay.style.display = "none";
+        });
+    }
+  
+
+    async function exportPDF() {
+        if (dataPeserta.length === 0) return alert("Belum ada data peserta!");
+        const overlay = document.getElementById("loadingOverlay");
+        overlay.style.display = "flex";
+        document.querySelector("#loadingOverlay div").innerText = "GENERATING PDF...";
+        
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const margin = 15;
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+
+        try {
+            for (let i = 0; i < dataPeserta.length; i++) {
+                const p = dataPeserta[i];
+                const soalTersaring = filterSoalValidUntukKelas(p.kelas);
+                if (soalTersaring.length === 0) continue;
+                if (i > 0) pdf.addPage();
+
+                pdf.setFontSize(14);
+                pdf.setFont("helvetica", "bold");
+                pdf.text(p.nama.toUpperCase(), margin, 15);
+                pdf.setFontSize(9);
+                pdf.setFont("helvetica", "normal");
+                pdf.text(`MAPEL: ${p.mapel} | KELAS: ${p.kelas} | RUANG: ${p.ruangan}`, margin, 20);
+                
+                if (p.qr) {
+                    pdf.addImage(p.qr, 'PNG', pageWidth - 35, 7, 20, 20);
+                }
+                pdf.setLineWidth(0.5);
+                pdf.line(margin, 28, pageWidth - margin, 28);
+
+                let currentY = 35; 
+                for (let idx = 0; idx < soalTersaring.length; idx++) {
+                    const s = soalTersaring[idx];
+                    if (currentY > pageHeight - 40) { pdf.addPage(); currentY = 20; }
+
+                    pdf.setFontSize(8);
+                    pdf.setTextColor(100);
+                    pdf.text(`SOAL ${idx+1}`, margin, currentY);
+                    currentY += 5;
+                    pdf.setTextColor(0);
+                    pdf.setFontSize(11);
+                    
+                    if(s.teks) {
+                        const lines = pdf.splitTextToSize(s.teks, pageWidth - (margin * 2));
+                        pdf.text(lines, margin, currentY);
+                        currentY += (lines.length * 6);
                     }
 
-                    pdf.addImage(s.gambar, 'PNG', margin, currentY, imgW, imgH);
-                    currentY += imgH + 10;
+                    if (s.gambar) {
+                        const img = new Image();
+                        img.src = s.gambar;
+                        await new Promise(r => img.onload = r);
+                        const ratio = img.height / img.width;
+                        const wInPdf = s.lebar * 0.264583; 
+                        const hInPdf = wInPdf * ratio;
+                        if (currentY + hInPdf > pageHeight - 20) { pdf.addPage(); currentY = 20; }
+                        pdf.addImage(s.gambar, 'JPEG', margin, currentY, wInPdf, hInPdf);
+                        currentY += hInPdf + 10;
+                    }
+                    currentY += 5;
                 }
-                
-                // Garis pemisah antar soal (opsional, agar lebih rapi)
-                pdf.setDrawColor(230);
-                pdf.line(margin, currentY - 2, pageWidth - margin, currentY - 2);
-                currentY += 5;
             }
-        }
-        pdf.save(`Soal_CyberQR_${Date.now()}.pdf`);
-    } catch (err) {
-        console.error(err);
-        alert("Terjadi kesalahan saat membuat PDF");
-    } finally {
-        overlay.style.display = "none";
+            pdf.save("CyberQR_Exam_Pro.pdf");
+        } catch (err) { console.error(err); alert("Gagal export PDF"); }
+        finally { overlay.style.display = "none"; }
     }
-}
-  
-  
-  
-  
-  async function exportWord() {
-    if (!dataPeserta.length) return alert("Data kosong!");
-
-    const overlay = document.getElementById("loadingOverlay");
-    const progressText = document.getElementById("progressText");
-    const progressCount = document.getElementById("progressCount");
-    
-    overlay.style.display = "flex";
-    document.querySelector("#loadingOverlay div").innerText = "GENERATING WORD (HIGH QUALITY)...";
-
-    const { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType, BorderStyle, Table, TableRow, TableCell, WidthType } = docx;
-    const allChildren = [];
-
-    try {
-        for (let i = 0; i < dataPeserta.length; i++) {
-            const p = dataPeserta[i];
-            const soalTersaring = filterSoalValidUntukKelas(p.kelas);
-            if (soalTersaring.length === 0) continue;
-
-            // Update UI setiap 5 data agar tidak freeze
-            if (i % 5 === 0) {
-                const percent = Math.round(((i + 1) / dataPeserta.length) * 100);
-                progressText.innerText = percent + "%";
-                progressCount.innerText = `Menyusun Data ${i + 1} dari ${dataPeserta.length}`;
-                await new Promise(resolve => setTimeout(resolve, 10)); 
-            }
-
-            // --- HEADER TABEL PESERTA ---
-            allChildren.push(new Table({
-                width: { size: 100, type: WidthType.PERCENTAGE },
-                borders: { bottom: { style: BorderStyle.SINGLE, size: 24 }, top: BorderStyle.NONE, left: BorderStyle.NONE, right: BorderStyle.NONE },
-                rows: [new TableRow({
-                    children: [
-                        new TableCell({
-                            width: { size: 80, type: WidthType.PERCENTAGE },
-                            children: [
-                                new Paragraph({ children: [new TextRun({ text: p.nama.toUpperCase(), bold: true, size: 28 })] }),
-                                new Paragraph({ children: [new TextRun({ text: `MAPEL: ${p.mapel} | KELAS: ${p.kelas} | RUANGAN: ${p.ruangan}`, size: 18 })] }),
-                            ],
-                        }),
-                        new TableCell({
-                            width: { size: 20, type: WidthType.PERCENTAGE },
-                            children: [
-                                new Paragraph({
-                                    alignment: AlignmentType.RIGHT,
-                                    children: [
-                                        new ImageRun({
-                                            data: p.qr.split(',')[1],
-                                            transformation: { width: 60, height: 60 },
-                                            type: "png"
-                                        })
-                                    ]
-                                })
-                            ]
-                        })
-                    ]
-                })]
-            }));
-
-            // --- KONTEN SOAL ---
-            soalTersaring.forEach((s, idx) => {
-                allChildren.push(new Paragraph({ 
-                    spacing: { before: 200 }, 
-                    children: [new TextRun({ text: `SOAL ${idx + 1}`, size: 14, color: "666666", italic: true })] 
-                }));
-                
-                // Teks Soal
-                allChildren.push(new Paragraph({ 
-                    children: [new TextRun({ text: s.teks, size: 24 })] 
-                }));
-
-                // Gambar Soal (Jika ada)
-                if (s.gambar) {
-                    try {
-                        allChildren.push(new Paragraph({
-                            children: [
-                                new ImageRun({
-                                    data: s.gambar.split(',')[1],
-                                    transformation: { 
-                                        width: s.lebar / 1.5, 
-                                        height: (s.lebar / 1.5) * 0.75 
-                                    },
-                                    type: "png"
-                                })
-                            ]
-                        }));
-                    } catch (e) { console.error("Gagal insert gambar ke Word", e); }
-                }
-            });
-
-            // Page Break (Kecuali halaman terakhir)
-            if (i < dataPeserta.length - 1) {
-                allChildren.push(new Paragraph({ text: "", pageBreakBefore: true }));
-            }
-        }
-
-        const doc = new Document({ sections: [{ children: allChildren }] });
-        const blob = await Packer.toBlob(doc);
-        saveAs(blob, `CyberQR_Massal_${new Date().getTime()}.docx`);
-
-    } catch (err) {
-        console.error(err);
-        alert("Gagal ekspor Word: " + err.message);
-    } finally {
-        overlay.style.display = "none";
-    }
-}
 </script>
 </body>
 </html>
