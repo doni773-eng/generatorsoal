@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>QR Peserta & Soal A4</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- QR -->
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs/qrcode.min.js"></script>
+
+<!-- WORD -->
+<script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<!-- EXCEL -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+<style>
+:root{
+  --neon:#22d3ee;
+  --neon2:#6366f1;
+  --dark:#020617;
+  --glass:rgba(255,255,255,.08);
+  --border:rgba(255,255,255,.15);
+}
+
+*{box-sizing:border-box}
+
+body{
+  margin:0;
+  font-family:"Segoe UI",system-ui,sans-serif;
+  min-height:100vh;
+  background:
+    radial-gradient(circle at top,#0f172a,#020617 60%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#e5e7eb;
+}
+  
+  .page{
+  width:794px;
+  min-height:1123px;
+  padding:96px;
+  margin:20px auto;
+  background:white;
+  color:black;
+  font-family:"Times New Roman";
+  font-size:16px;
+  box-shadow:0 0 10px rgba(0,0,0,.2);
+}
+
+.header{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+}
+
+.left p{
+  margin:0;
+}
+
+.nama{
+  font-weight:bold;
+}
+
+.right img{
+  width:120px;
+}
+
+.isi{
+  text-align:justify;
+  line-height:1.5;
+  margin-bottom:8px;
+}
+  
+  
+
+.container{
+  width:1100px;
+  max-width:95%;
+  background:var(--glass);
+  backdrop-filter:blur(18px);
+  border:1px solid var(--border);
+  border-radius:24px;
+  padding:30px;
+  box-shadow:
+    0 0 40px rgba(34,211,238,.15),
+    inset 0 0 0 1px rgba(255,255,255,.05);
+}
+
+h2{
+  text-align:center;
+  margin:0;
+  font-size:28px;
+  background:linear-gradient(90deg,var(--neon),var(--neon2));
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+}
+
+.subtitle{
+  text-align:center;
+  margin-top:6px;
+  font-size:13px;
+  letter-spacing:1px;
+  color:#94a3b8;
+}
+
+.section{
+  margin-top:30px;
+  padding:22px;
+  border-radius:18px;
+  background:rgba(2,6,23,.6);
+  border:1px solid var(--border);
+}
+
+.section h3{
+  margin:0 0 12px;
+  font-size:16px;
+  color:#67e8f9;
+  letter-spacing:.5px;
+}
+
+input,textarea{
+  width:100%;
+  margin-top:10px;
+  padding:14px 16px;
+  border-radius:14px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,.06);
+  color:#e5e7eb;
+  font-size:14px;
+  outline:none;
+}
+
+input::placeholder,textarea::placeholder{
+  color:#94a3b8;
+}
+
+input:focus,textarea:focus{
+  border-color:var(--neon);
+  box-shadow:0 0 0 2px rgba(34,211,238,.25);
+}
+
+button{
+  margin-top:12px;
+  padding:14px;
+  width:100%;
+  border-radius:14px;
+  border:none;
+  font-size:14px;
+  font-weight:600;
+  letter-spacing:.5px;
+  cursor:pointer;
+  color:#020617;
+  background:linear-gradient(135deg,var(--neon),var(--neon2));
+  transition:.25s;
+}
+
+button:hover{
+  transform:translateY(-2px);
+  box-shadow:0 0 25px rgba(34,211,238,.6);
+}
+
+.note{
+  font-size:11px;
+  margin-top:6px;
+  color:#94a3b8;
+}
+
+/* === GRID PESERTA === */
+#daftarPeserta{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:18px;
+}
+
+.output{
+  background:rgba(255,255,255,.05);
+  border:1px solid var(--border);
+  border-radius:18px;
+  padding:16px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.04);
+}
+
+.output img{
+  width:120px;
+  height:120px;
+  background:#fff;
+  padding:8px;
+  border-radius:14px;
+  box-shadow:
+    0 0 20px rgba(34,211,238,.35);
+}
+
+.output b{
+  font-size:15px;
+}
+
+.footer{
+  text-align:center;
+  margin-top:30px;
+  font-size:11px;
+  color:#64748b;
+  letter-spacing:1px;
+}
+</style>
+  
+</head>
+
+<body>
+<div class="container">
+<h2>QR Peserta & Generator Word A4</h2>
+
+<div class="section">
+<h3>Import Peserta dari Excel</h3>
+<input type="file" id="fileExcel" accept=".xlsx,.xls">
+<button onclick="importExcel()">Import Excel</button>
+<div class="note">Kolom Excel: Nama | Kelas | Ruangan</div>
+</div>
+
+<div class="section">
+<h3>Input Manual Peserta</h3>
+<input id="nama" placeholder="Nama Peserta">
+<input id="kelas" placeholder="Kelas">
+<input id="ruangan" placeholder="Ruangan">
+<button onclick="tambahManual()">Tambah Peserta</button>
+</div>
+
+<div class="section">
+<h3>Daftar Peserta</h3>
+<div id="daftarPeserta"></div>
+<div class="note" id="jumlah">Jumlah peserta: 0</div>
+<button onclick="resetData()" style="margin-top:10px;background:#ef4444;color:white">
+  Reset Semua Data
+</button>
+</div>
+
+<div class="section">
+<h3>Soal</h3>
+<textarea id="soal" rows="8" placeholder="Tulis soal di sini..."></textarea>
+<button onclick="exportWord()">Download Word A4</button>
+</div>
+
+<div class="section">
+<h3>Pratinjau A4</h3>
+<button onclick="preview()">Tampilkan Pratinjau</button>
+
+<div id="previewArea" style="
+  margin-top:15px;
+  max-height:500px;
+  overflow:auto;
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:20px;
+  background:white;
+  color:black;
+">
+</div>
+</div>
+
+<script>
+let dataPeserta = [];
+
+function buatQR(text, callback){
+  const temp = document.createElement("div");
+  new QRCode(temp,{text,width:120,height:120});
+  setTimeout(()=>{
+    const img = temp.querySelector("img");
+    const canvas = document.createElement("canvas");
+    canvas.width=120; canvas.height=120;
+    const ctx=canvas.getContext("2d");
+    ctx.fillStyle="#fff";
+    ctx.fillRect(0,0,120,120);
+    ctx.drawImage(img,0,0);
+    callback(canvas.toDataURL());
+  },200);
+}
+
+function tambahData(nama,kelas,ruangan){
+  buatQR(`${nama} | ${kelas} | ${ruangan}`, qr=>{
+    dataPeserta.push({nama,kelas,ruangan,qr});
+    tampilkan();
+  });
+}
+  
+function resetData(){
+  if(!confirm("Yakin ingin menghapus semua data peserta?")) return;
+  dataPeserta = [];
+  daftarPeserta.innerHTML = "";
+  jumlah.innerText = "Jumlah peserta: 0";
+  soal.value = "";
+}
+  
+function preview(){
+  if(!dataPeserta.length) return alert("Belum ada peserta");
+  if(!soal.value) return alert("Soal kosong");
+
+  let html = "";
+
+  dataPeserta.forEach((p)=>{
+
+    html += `
+    <div class="page">
+
+      <div class="header">
+        <div class="left">
+          <p class="nama">${p.nama}</p>
+          <p>Kelas : ${p.kelas}</p>
+          <p>Ruangan : ${p.ruangan}</p>
+        </div>
+        <div class="right">
+          <img src="${p.qr}">
+        </div>
+      </div>
+
+      <hr>
+
+      ${soal.value.split("\n").map(s=>`
+        <p class="isi">${s}</p>
+      `).join("")}
+
+    </div>
+    `;
+  });
+
+  document.getElementById("previewArea").innerHTML = html;
+}
+  
+  
+  
+
+function tambahManual(){
+  const n=nama.value,k=kelas.value,r=ruangan.value;
+  if(!n||!k||!r) return alert("Lengkapi data");
+  tambahData(n,k,r);
+  nama.value=kelas.value=ruangan.value="";
+}
+  
+  
+  
+
+function importExcel(){
+  const f=fileExcel.files[0];
+  if(!f) return alert("Pilih file Excel");
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:"array"});
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+    rows.forEach(r=>{
+      if(r.Nama&&r.Kelas&&r.Ruangan)
+        tambahData(r.Nama,r.Kelas,r.Ruangan);
+    });
+  };
+  reader.readAsArrayBuffer(f);
+}
+
+  
+  
+  
+function tampilkan(){
+  daftarPeserta.innerHTML="";
+  dataPeserta.forEach((p,i)=>{
+    daftarPeserta.innerHTML+=`
+    <div class="output">
+      <div>
+        <b>${i+1}. ${p.nama}</b><br>
+        Kelas: ${p.kelas}<br>
+        Ruang: ${p.ruangan}
+      </div>
+      <img src="${p.qr}">
+    </div>`;
+  });
+  jumlah.innerText="Jumlah peserta: "+dataPeserta.length;
+}
+  
+  
+  
+function exportWord(){
+  if(!dataPeserta.length) return alert("Belum ada peserta");
+  if(!soal.value) return alert("Soal kosong");
+
+  const sections = dataPeserta.map(p => ({
+    properties: {
+      page: {
+        size: { width: 11906, height: 16838 }, // A4
+        margin: {
+          top: 1440,
+          bottom: 1440,
+          left: 1701,
+          right: 1440
+        }
+      }
+    },
+    children: [
+
+      new docx.Table({
+        width: { size: 100, type: docx.WidthType.PERCENTAGE },
+        rows: [
+          new docx.TableRow({
+            children: [
+
+              new docx.TableCell({
+                width: { size: 70, type: docx.WidthType.PERCENTAGE },
+                children: [
+                 new docx.Paragraph({
+  spacing: { before: 0, after: 0 },
+  children: [
+    new docx.TextRun({
+      text: p.nama,
+      bold: true,
+      font: "Times New Roman",
+      size: 24
+    })
+  ]
+}),
+new docx.Paragraph({
+  spacing: { before: 0, after: 0 },
+  children: [
+    new docx.TextRun({
+      text: `Kelas : ${p.kelas}`,
+      font: "Times New Roman",
+      size: 24
+    })
+  ]
+}),
+new docx.Paragraph({
+  spacing: { before: 0, after: 120 },
+  children: [
+    new docx.TextRun({
+      text: `Ruangan : ${p.ruangan}`,
+      font: "Times New Roman",
+      size: 24
+    })
+  ]
+}),
+                ]
+              }),
+
+              new docx.TableCell({
+                width: { size: 30, type: docx.WidthType.PERCENTAGE },
+                children: [
+                  new docx.Paragraph({
+                    alignment: docx.AlignmentType.RIGHT,
+                    children: [
+                      new docx.ImageRun({
+                        data: p.qr,
+                        transformation: { width: 120, height: 120 }
+                      })
+                    ]
+                  })
+                ]
+              })
+
+            ]
+          })
+        ]
+      }),
+
+      new docx.Paragraph({ spacing: { after: 2 } }),
+    
+      new docx.Paragraph({ spacing: { after: 300 } }),
+
+      ...soal.value.split("\n").map(baris =>
+        new docx.Paragraph({
+  spacing: {
+    line: 360,        // spasi 1.5
+    before: 0,
+    after: 120        // jarak antar paragraf rapi
+  },
+  children: [
+    new docx.TextRun({
+      text: baris,
+      font: "Times New Roman",
+      size: 24
+    })
+  ]
+})
+      ),
+
+      new docx.Paragraph({
+        children: [new docx.PageBreak()]
+      })
+
+    ]
+  }));
+
+  const doc = new docx.Document({ sections });
+  docx.Packer.toBlob(doc).then(blob => {
+    saveAs(blob, "Peserta_A4_Rapi.docx");
+  });
+}
+
+</script>
+</body>
+</html>
