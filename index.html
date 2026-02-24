@@ -9,6 +9,9 @@
     <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
 
     <style>
@@ -174,6 +177,7 @@
         
         .excel-btn { background: #10b981; }
         .reset-btn { background: var(--danger); }
+        .pdf-btn { background: #e11d48; }
     </style>
 </head>
 <body>
@@ -220,9 +224,10 @@
         <button onclick="tambahInputSoal()" style="width: 100%; background: #0ea5e9;">+ TAMBAHKAN SOAL BARU</button>
     </div>
 
-    <div class="section" style="display: flex; gap: 20px; background: transparent; border: none;">
-        <button onclick="exportWord()" style="flex: 1; font-size: 16px; padding: 20px; background: var(--neon2);">Ekspor ke Word</button>
-        <button onclick="preview()" style="flex: 1; background: #334155; font-size: 16px;">Pratinjau</button>
+    <div class="section" style="display: flex; gap: 10px; background: transparent; border: none; flex-wrap: wrap;">
+        <button onclick="preview()" style="flex: 1; background: #334155; font-size: 16px;">01. Pratinjau</button>
+        <button onclick="exportWord()" style="flex: 1; font-size: 16px; background: var(--neon2);">02. Ekspor Word</button>
+        <button onclick="exportPDF()" class="pdf-btn" style="flex: 1; font-size: 16px;">03. Ekspor PDF</button>
     </div>
 
     <div id="previewArea"></div>
@@ -450,7 +455,7 @@
         let html = "";
         dataPeserta.forEach(p => {
             const soalTersaring = filterSoalUntukKelas(p.kelas);
-            html += `<div class="page" style="padding:40px; border-bottom:2px dashed #ccc; margin-bottom: 20px;">
+            html += `<div class="page pdf-page" style="padding:40px; border-bottom:2px dashed #ccc; margin-bottom: 20px;">
                 <div style="display:flex; justify-content:space-between; border-bottom:3px solid #000; padding-bottom:10px; margin-bottom:20px;">
                     <div>
                         <h1 style="margin:0; font-size:22px;">${p.nama.toUpperCase()}</h1>
@@ -474,6 +479,50 @@
         });
         document.getElementById("previewArea").innerHTML = html;
         window.scrollTo({ top: document.getElementById("previewArea").offsetTop, behavior: 'smooth' });
+    }
+
+    // --- FITUR BARU: EXPORT PDF ---
+    // --- PERBAIKAN FITUR EXPORT PDF ---
+    async function exportPDF() {
+        const previewArea = document.getElementById("previewArea");
+        const pages = previewArea.querySelectorAll(".pdf-page");
+
+        if (pages.length === 0) {
+            alert("Silakan klik tombol 'Pratinjau' terlebih dahulu!");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        // Gunakan format A4
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pageWidth = pdf.internal.pageSize.getWidth();
+        const pageHeight = pdf.internal.pageSize.getHeight();
+
+        alert("Sedang memproses PDF, mohon tunggu...");
+
+        for (let i = 0; i < pages.length; i++) {
+            const canvas = await html2canvas(pages[i], {
+                scale: 2, // Tetap gunakan scale 2 untuk ketajaman teks
+                useCORS: true,
+                logging: false,
+                backgroundColor: "#ffffff" // Pastikan background putih
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            
+            // Hitung rasio agar gambar tidak gepeng atau terpotong
+            const imgProps = pdf.getImageProperties(imgData);
+            const pdfImgHeight = (imgProps.height * pageWidth) / imgProps.width;
+
+            if (i > 0) pdf.addPage();
+            
+            // Masukkan gambar dengan lebar menyesuaikan halaman (pageWidth) 
+            // dan tinggi proporsional (pdfImgHeight)
+            pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, pdfImgHeight);
+        }
+
+        pdf.save(`Soal_CyberQR_${new Date().getTime()}.pdf`);
+        alert("PDF Berhasil diunduh!");
     }
 
    async function exportWord() {
