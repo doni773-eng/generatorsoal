@@ -341,14 +341,36 @@
         <div style="display: flex; gap: 10px;">
             <button onclick="tambahManual()" style="flex: 2;">Tambah Peserta</button>
             <button onclick="resetData()" class="reset-btn" style="flex: 1;">Hapus Semua Data</button>
+          <div id="totalPesertaBox" style="
+    margin-top:15px;
+    padding:10px 15px;
+    background:rgba(0,255,136,0.08);
+    border:1px dashed var(--success);
+    border-radius:12px;
+    font-size:12px;
+    font-weight:bold;
+    color:var(--success);
+    letter-spacing:1px;
+">
+    👥 TOTAL PESERTA : <span id="totalPeserta">0</span>
+</div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
-    <b style="font-size:12px; letter-spacing:1px;">HASIL INPUT DATA PESERTA</b>
     <button onclick="togglePeserta()" id="btnTogglePeserta"
         style="background:#334155; font-size:10px; padding:6px 14px;">
         Sembunyikan ▴
     </button>
 </div>
         </div>
+      <!-- 🔎 FITUR PENCARIAN PESERTA -->
+<div style="margin-top:15px;">
+    <input 
+        type="text" 
+        id="searchPeserta" 
+        placeholder="🔍 Cari Nama Peserta..." 
+        oninput="cariPeserta(this.value)"
+        style="padding:10px; font-size:12px;"
+    >
+</div>
         <div id="daftarPeserta" style="margin-top:20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:15px;"></div>
     </div>
   
@@ -428,6 +450,22 @@
         }
     }
   
+  function cariPeserta(keyword) {
+    const container = document.getElementById("daftarPeserta");
+    const cards = container.querySelectorAll(".peserta-card");
+    const search = keyword.toLowerCase().trim();
+
+    cards.forEach(card => {
+        const nama = card.querySelector("b").innerText.toLowerCase();
+        
+        if (nama.includes(search)) {
+            card.style.display = "block";
+        } else {
+            card.style.display = "none";
+        }
+    });
+}
+  
   function toggleMathPanel(id) {
     const panel = document.getElementById(`math-panel-${id}`);
     const btn = document.getElementById(`math-toggle-${id}`);
@@ -463,6 +501,10 @@
     });
 
     renderRekapSoal(hasil);
+}
+  
+  function updateTotalPeserta() {
+    document.getElementById("totalPeserta").innerText = dataPeserta.length;
 }
   
   function renderRekapSoal(data) {
@@ -929,26 +971,34 @@ function toggleTableInput(id) {
     }
 }
 
-    function renderPeserta() {
-        const container = document.getElementById("daftarPeserta");
-        container.innerHTML = dataPeserta.map((p, i) => `
-            <div class="peserta-card animate__animated animate__fadeIn">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <span style="background: var(--neon2); color: white; padding: 2px 8px; border-radius: 5px; font-size: 10px;">#${i + 1}</span>
-                    <button onclick="hapusPeserta(${i})" style="background:var(--danger); padding:2px 8px; margin:0; border-radius: 5px;">✕</button>
-                </div>
-                <b style="color:var(--neon); display: block; margin-top: 5px;">${p.nama}</b>
-                <div style="font-size: 11px; margin-top: 4px; opacity: 0.9;">
-                    <span>📍 Ruang: <b>${p.ruangan}</b></span><br>
-                    <span>📚 ${p.kelas} • ${p.mapel}</span>
-                </div>
+    
+  function renderPeserta() {
+    const container = document.getElementById("daftarPeserta");
+    container.innerHTML = dataPeserta.map((p, i) => `
+        <div class="peserta-card animate__animated animate__fadeIn">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <span style="background: var(--neon2); color: white; padding: 2px 8px; border-radius: 5px; font-size: 10px;">#${i + 1}</span>
+                <button onclick="hapusPeserta(${i})" style="background:var(--danger); padding:2px 8px; margin:0; border-radius: 5px;">✕</button>
             </div>
-        `).join("");
-    }
+            <b style="color:var(--neon); display: block; margin-top: 5px;">${p.nama}</b>
+            <div style="font-size: 11px; margin-top: 4px; opacity: 0.9;">
+                <span>📍 Ruang: <b>${p.ruangan}</b></span><br>
+                <span>📚 ${p.kelas} • ${p.mapel}</span>
+            </div>
+        </div>
+    `).join("");
+
+    updateTotalPeserta(); // ✅ TAMBAHAN
+}
 
     function hapusPeserta(i) { dataPeserta.splice(i, 1); renderPeserta(); }
-    function resetData() { if(confirm("Hapus semua data peserta?")) { dataPeserta = []; renderPeserta(); } }
-
+    function resetData() {
+    if(confirm("Hapus semua data peserta?")) {
+        dataPeserta = [];
+        renderPeserta();
+        updateTotalPeserta(); // ✅ TAMBAHAN
+    }
+}
     async function importExcel() {
         const fileInput = document.getElementById("fileExcel");
         const f = fileInput.files[0];
@@ -987,6 +1037,7 @@ function toggleTableInput(id) {
                     }
                 }
                 renderPeserta();
+                updateTotalPeserta();
                 alert(`Berhasil mengimpor ${dataPeserta.length} data.`);
             } catch (err) { alert("Gagal membaca file Excel!"); }
             finally { overlay.style.display = "none"; importBtn.disabled = false; fileInput.value = ""; }
