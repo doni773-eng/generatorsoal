@@ -327,7 +327,7 @@
         <div style="margin-bottom: 20px; padding: 15px; background: rgba(0, 242, 255, 0.1); border-radius: 12px; border: 1px dashed var(--neon);">
             <label style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: var(--neon);">MASUKAN MATA PELAJARAN</label>
             <div style="display: flex; gap: 10px; margin-top: 5px;">
-                <input type="text" id="globalMapel" placeholder="Ketik Mapel Baru untuk SEMUA peserta...">
+                <input type="text" id="globalMapel" placeholder="Sesuaikan Dengan Mata Pelajaran Masing-Masing">
                 <button onclick="updateSemuaMapel()" style="background: var(--success); color: #000; min-width: 150px;">TEKAN UNTUK MENAMBAHKAN MAPEL</button>
             </div>
         </div>
@@ -387,7 +387,8 @@
         { label: 'Beta', code: '\\beta' },
         { label: 'Pi', code: '\\pi' },
         { label: 'Vektor', code: '\\overrightarrow{}' },
-        { label: 'Log', code: '\\log_{10}' }
+        { label: 'Log', code: '\\log_{a}' },
+        { label: 'Vektor Kolom', code: '\\begin{pmatrix} x \\\\ y \\\\ z \\end{pmatrix}' },
     ];
 
     /* FITUR BARU: FULLSCREEN & PRINT */
@@ -701,7 +702,7 @@ function getImageDimensions(base64) {
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                     <textarea id="text-${id}" style="flex:1; min-width: 250px; min-height:100px;" 
-                        placeholder="Masukkan konten soal (Gunakan $...$ untuk rumus manual)..." 
+                        placeholder="Silahkan Masukan Soal" 
                         oninput="updateSoalTeks('${id}', this.value); updateLivePreview('${id}')"></textarea>
                         <!-- PANEL PEMBUATAN TABEL (BAGIAN BAWAH) -->
 <div id="table-builder-${id}" class="table-builder" style="display:none;">
