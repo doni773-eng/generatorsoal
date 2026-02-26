@@ -50,6 +50,10 @@
             --border: rgba(0, 242, 255, 0.3);
             --input-bg: rgba(0, 0, 0, 0.3);
         }
+      
+      [id^="math-panel-"] {
+    transition: all 0.3s ease;
+}
 
         [data-theme="light"] {
             --bg-main: radial-gradient(circle at center, #f1f5f9 0%, #cbd5e1 100%);
@@ -235,6 +239,50 @@
             .container { padding: 20px; }
             .page { width: 100% !important; }
         }
+      .table-builder {
+    background: rgba(0,0,0,0.25);
+    border: 1px dashed var(--border);
+    padding: 15px;
+    border-radius: 12px;
+    margin-top: 10px;
+}
+
+/* ===== PANEL PEMBUATAN TABEL ===== */
+.table-builder {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(0,0,0,0.35);
+    border: 1px dashed #00f2ff;
+    border-radius: 12px;
+}
+
+/* GRID INPUT SEL TABEL */
+.table-builder-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 10px;
+    margin-top: 12px;
+}
+
+/* INPUT SEL TABEL */
+.table-builder-grid input {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid rgba(0,242,255,0.4);
+    background: rgba(0,0,0,0.4);
+    color: #fff;
+    text-align: center;
+    font-size: 13px;
+}
+
+/* HEADER PANEL */
+.table-builder h4 {
+    font-size: 12px;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+    color: #00f2ff;
+}
     </style>
 </head>
 <body>
@@ -358,7 +406,85 @@
             MathJax.typesetPromise([document.getElementById("printArea")]);
         }
     }
+  
+  function toggleMathPanel(id) {
+    const panel = document.getElementById(`math-panel-${id}`);
+    const btn = document.getElementById(`math-toggle-${id}`);
 
+    if (!panel || !btn) return;
+
+    if (panel.style.display === "none") {
+        panel.style.display = "flex";
+        btn.innerHTML = "Sembunyikan Simbol ▴";
+    } else {
+        panel.style.display = "none";
+        btn.innerHTML = "Tampilkan Simbol ▾";
+    }
+}
+
+  function openTableBuilder(id) {
+    const panel = document.getElementById(`table-builder-${id}`);
+    panel.style.display = panel.style.display === "none" ? "block" : "none";
+}
+
+function generateTableInputs(id) {
+    const rows = parseInt(document.getElementById(`tb-rows-${id}`).value);
+    const cols = parseInt(document.getElementById(`tb-cols-${id}`).value);
+    const grid = document.getElementById(`tb-grid-${id}`);
+
+    if (!rows || !cols || rows < 1 || cols < 1) {
+        return alert("Jumlah baris dan kolom tidak valid!");
+    }
+
+    grid.innerHTML = "";
+    grid.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+
+    for (let i = 0; i < rows * cols; i++) {
+        const input = document.createElement("input");
+        input.type = "text";
+        input.placeholder = `Sel ${i + 1}`;
+        grid.appendChild(input);
+    }
+}
+
+function insertCustomTable(id) {
+    const rows = parseInt(document.getElementById(`tb-rows-${id}`).value);
+    const cols = parseInt(document.getElementById(`tb-cols-${id}`).value);
+    const grid = document.getElementById(`tb-grid-${id}`);
+    const textarea = document.getElementById(`text-${id}`);
+
+    if (!textarea || !rows || !cols) return;
+
+    let tableHTML = `<table border="1" style="border-collapse:collapse; width:100%; margin:10px 0;">`;
+    const inputs = grid.querySelectorAll("input");
+    let index = 0;
+
+    for (let r = 0; r < rows; r++) {
+        tableHTML += "<tr>";
+        for (let c = 0; c < cols; c++) {
+            const val = inputs[index]?.value || "";
+            tableHTML += `<td style="padding:6px; text-align:center;">${val}</td>`;
+            index++;
+        }
+        tableHTML += "</tr>";
+    }
+
+    tableHTML += "</table>\n";
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+
+    textarea.value =
+        textarea.value.substring(0, start) +
+        tableHTML +
+        textarea.value.substring(end);
+
+    textarea.focus();
+    updateLivePreview(id);
+}
+  
+  
+  
 function togglePeserta() {
     const container = document.getElementById("daftarPeserta");
     const btn = document.getElementById("btnTogglePeserta");
@@ -384,6 +510,33 @@ function getImageDimensions(base64) {
     });
 }
 
+  function insertTable(id, rows = 2, cols = 2) {
+    const textarea = document.getElementById(`text-${id}`);
+    if (!textarea) return;
+
+    let tableHTML = `<table border="1" style="border-collapse:collapse; width:100%; margin:10px 0;">`;
+
+    for (let r = 0; r < rows; r++) {
+        tableHTML += "<tr>";
+        for (let c = 0; c < cols; c++) {
+            tableHTML += `<td style="padding:6px; text-align:center;">&nbsp;</td>`;
+        }
+        tableHTML += "</tr>";
+    }
+
+    tableHTML += "</table>\n";
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    textarea.value =
+        textarea.value.substring(0, start) +
+        tableHTML +
+        textarea.value.substring(end);
+
+    textarea.focus();
+    updateLivePreview(id);
+}
+  
     function closeFullscreen() {
         document.getElementById("fullScreenModal").style.display = "none";
         document.body.style.overflow = "auto";
@@ -519,14 +672,60 @@ function getImageDimensions(base64) {
             <div class="checkbox-group" id="cb-group-${id}" style="margin-bottom:15px; display:flex; flex-wrap:wrap; gap:5px;">
                 ${checkboxesHtml}
             </div>
-            <div style="margin-bottom:10px; padding:10px; background:rgba(0,0,0,0.2); border-radius:10px; display:flex; flex-wrap:wrap; gap:2px;">
-                ${mathButtons}
-            </div>
+            <button id="math-toggle-${id}"
+    onclick="toggleMathPanel('${id}')"
+    style="background:#334155; font-size:10px; padding:6px 14px; margin-bottom:8px;">
+    Tampilkan Simbol ▾
+</button>
+
+<div id="math-panel-${id}"
+     style="margin-bottom:10px; padding:10px; background:rgba(0,0,0,0.2);
+            border-radius:10px; display:none; flex-wrap:wrap; gap:2px;">
+
+    ${mathButtons}
+
+<button type="button" class="math-tool-btn"
+    onclick="toggleTableInput('${id}')">
+    TABEL INPUT
+</button>
+
+    
+
+    <button style="margin-top:10px; background:var(--success); color:black;"
+        onclick="insertCustomTable('${id}')">
+        Sisipkan ke Soal
+    </button>
+</div>
+</div>
+         
             <div style="display: flex; flex-direction: column; gap: 10px;">
                 <div style="display: flex; gap: 15px; flex-wrap: wrap;">
                     <textarea id="text-${id}" style="flex:1; min-width: 250px; min-height:100px;" 
                         placeholder="Masukkan konten soal (Gunakan $...$ untuk rumus manual)..." 
                         oninput="updateSoalTeks('${id}', this.value); updateLivePreview('${id}')"></textarea>
+                        <!-- PANEL PEMBUATAN TABEL (BAGIAN BAWAH) -->
+<div id="table-builder-${id}" class="table-builder" style="display:none;">
+    <h4 style="margin:0 0 10px; color:#0ff;">PEMBUATAN TABEL</h4>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <input type="number" id="tb-rows-${id}" placeholder="Baris" min="1" style="width:80px;">
+        <input type="number" id="tb-cols-${id}" placeholder="Kolom" min="1" style="width:80px;">
+        <button onclick="generateTableInputs('${id}')" class="math-tool-btn">
+            BUAT GRID
+        </button>
+<button class="btn-reset-table" onclick="resetTableInputs(${id})">
+    RESET TABEL
+</button>
+    </div>
+
+    <div id="tb-grid-${id}" class="table-builder-grid"></div>
+
+    <button onclick="insertCustomTable('${id}')"
+        style="margin-top:10px;"
+        class="math-tool-btn success">
+        SISIPKAN KE SOAL
+    </button>
+</div>
                     <img id="img-${id}" style="max-width:150px; border-radius:10px; display:none; border:1px solid var(--neon);">
                 </div>
                 
@@ -598,7 +797,15 @@ function getImageDimensions(base64) {
     }
     
     function hapusInputSoal(id) { document.getElementById(`item-${id}`).remove(); listSoal = listSoal.filter(s => s.id != id); }
+  
+  
+function resetTableInputs(id) {
+    const container = document.getElementById(`tb-grid-${id}`);
+    if (!container) return;
 
+    const inputs = container.querySelectorAll("input");
+    inputs.forEach(input => input.value = "");
+}
     function generateQRAsync(text) {
         return new Promise((resolve) => {
             const temp = document.createElement("div");
@@ -628,6 +835,20 @@ function getImageDimensions(base64) {
         document.getElementById("nama").value = "";
         document.getElementById("nama").focus();
     }
+
+function toggleTableInput(id) {
+    const panel = document.getElementById(`table-builder-${id}`);
+    const grid = document.getElementById(`tb-grid-${id}`);
+
+    if (!panel) return;
+
+    if (panel.style.display === "none" || panel.style.display === "") {
+        panel.style.display = "block";
+    } else {
+        panel.style.display = "none";
+        if (grid) grid.innerHTML = "";
+    }
+}
 
     function renderPeserta() {
         const container = document.getElementById("daftarPeserta");
