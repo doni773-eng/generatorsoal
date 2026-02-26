@@ -351,20 +351,40 @@
         </div>
         <div id="daftarPeserta" style="margin-top:20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:15px;"></div>
     </div>
+  
 
     <div class="section">
         <h3>02. Pertanyaan</h3>
         <p style="font-size: 11px; opacity: 0.7; margin-top: -10px;">Pilih target kelas spesifik. Klik tombol simbol untuk memasukkan rumus matematika.</p>
         <div id="containerSoal"></div>
-        <button onclick="tambahInputSoal()" style="width: 100%; background: #0ea5e9;">+ TAMBAHKAN SOAL BARU</button>
+
+<!-- REKAP JUMLAH SOAL -->
+<div id="rekapSoal"
+     style="margin:15px 0;
+            padding:12px;
+            background:rgba(0,242,255,0.08);
+            border:1px dashed var(--neon);
+            border-radius:12px;
+            font-size:12px;">
+    <b style="color:var(--neon)">📊 REKAP JUMLAH SOAL PER KELAS</b>
+
+    <div id="rekapSoalList"
+         style="margin-top:8px;
+                display:flex;
+                flex-wrap:wrap;
+                gap:8px;">
     </div>
+</div>
+
+<button onclick="tambahInputSoal()" style="width: 100%; background: #0ea5e9;">
+    + TAMBAHKAN SOAL BARU
+</button>
 
     <div class="section" style="display: flex; gap: 10px; background: transparent; border: none; flex-wrap: wrap;">
         <button onclick="preview()" style="flex: 1; background: #334155; font-size: 16px;">Pratinjau List</button>
         <button onclick="openFullscreenPreview()" style="flex: 1; background: #00ff88; color: black; font-size: 16px;">PRATINJAU FULL & PRINT</button>
         <button onclick="exportWord()" style="flex: 1; font-size: 16px; background: var(--neon2);">Ekspor Word</button>
-        <button onclick="exportPDF()" class="pdf-btn" style="flex: 1; font-size: 16px;">Ekspor PDF</button>
-    </div>
+        <button onclick="exportPDF()" class="pdf-btn">Ekspor PDF</button>
 
     <div id="previewArea"></div>
 </div>
@@ -421,6 +441,51 @@
         panel.style.display = "none";
         btn.innerHTML = "Tampilkan Simbol ▾";
     }
+}
+  
+  function hitungSoalPerKelas() {
+    const hasil = {};
+
+    OPSI_KELAS.forEach(k => hasil[k] = 0);
+
+    listSoal.forEach(s => {
+        const punyaIsi =
+            (s.teks && s.teks.trim() !== "") ||
+            s.gambar !== null;
+
+        if (!punyaIsi) return;
+
+        s.targetKelas.forEach(kelas => {
+            if (hasil[kelas] !== undefined) {
+                hasil[kelas]++;
+            }
+        });
+    });
+
+    renderRekapSoal(hasil);
+}
+  
+  function renderRekapSoal(data) {
+    const container = document.getElementById("rekapSoalList");
+    container.innerHTML = "";
+
+    Object.keys(data).forEach(kelas => {
+        const jumlah = data[kelas];
+
+        container.innerHTML += `
+            <div style="
+                padding:6px 12px;
+                border-radius:20px;
+                background:${jumlah ? 'rgba(0,255,136,0.15)' : 'rgba(255,255,255,0.08)'};
+                border:1px solid ${jumlah ? 'var(--success)' : 'var(--border)'};
+                font-weight:bold;
+                color:${jumlah ? 'var(--success)' : '#aaa'};
+                font-size:11px;
+            ">
+                ${kelas} : ${jumlah} soal
+            </div>
+        `;
+    });
 }
 
   function openTableBuilder(id) {
@@ -482,6 +547,10 @@ function insertCustomTable(id) {
 
     textarea.focus();
     updateLivePreview(id);
+  const soal = listSoal.find(s => s.id == id);
+if (soal) soal.teks = textarea.value;
+
+hitungSoalPerKelas();
 }
   
   
@@ -750,17 +819,23 @@ function getImageDimensions(base64) {
         `;
         document.getElementById("containerSoal").appendChild(div);
         listSoal.push({ id: id, teks: "", gambar: null, lebar: 200, targetKelas: [] });
-    }
+    hitungSoalPerKelas();}
 
-    function updateSoalTeks(id, val) { const soal = listSoal.find(s => s.id == id); if(soal) soal.teks = val; }
-    
+function updateSoalTeks(id, val) {
+    const soal = listSoal.find(s => s.id == id);
+    if(soal) soal.teks = val;
+    hitungSoalPerKelas();
+}    
     function updateSoalKelas(id) {
-        const soal = listSoal.find(s => s.id == id);
-        if(soal) {
-            const container = document.getElementById(`cb-group-${id}`);
-            soal.targetKelas = Array.from(container.querySelectorAll('input:checked')).map(cb => cb.value);
-        }
+    const soal = listSoal.find(s => s.id == id);
+    if(soal) {
+        const container = document.getElementById(`cb-group-${id}`);
+        soal.targetKelas = Array
+            .from(container.querySelectorAll('input:checked'))
+            .map(cb => cb.value);
     }
+    hitungSoalPerKelas();
+}
     
     function updateImageSize(id, val) {
         const soal = listSoal.find(s => s.id == id);
@@ -797,8 +872,11 @@ function getImageDimensions(base64) {
         reader.readAsDataURL(file);
     }
     
-    function hapusInputSoal(id) { document.getElementById(`item-${id}`).remove(); listSoal = listSoal.filter(s => s.id != id); }
-  
+function hapusInputSoal(id) {
+    document.getElementById(`item-${id}`).remove();
+    listSoal = listSoal.filter(s => s.id != id);
+    hitungSoalPerKelas();
+}  
   
 function resetTableInputs(id) {
     const container = document.getElementById(`tb-grid-${id}`);
@@ -915,6 +993,18 @@ function toggleTableInput(id) {
         };
         reader.readAsArrayBuffer(f);
     }
+  
+  function adaSimbolMatematika() {
+    return listSoal.some(s => {
+        if (!s.teks) return false;
+
+        return (
+            /\$.*?\$/.test(s.teks) ||                 // MathJax
+            /\\(frac|sqrt|sum|int|lim)/.test(s.teks) ||
+            /<table[\s>]/i.test(s.teks)              // ⬅️ DETEKSI TABEL
+        );
+    });
+}
 
     function filterSoalValidUntukKelas(kelasPeserta) {
         const kP = kelasPeserta.trim().toUpperCase();
@@ -962,36 +1052,29 @@ function toggleTableInput(id) {
         if (window.MathJax) {
             MathJax.typesetPromise([previewArea]).catch((err) => console.log(err));
         }
-        window.scrollTo({ top: previewArea.offsetTop, behavior: 'smooth' });
     }
 
-    async function exportPDF() {
-    if (!dataPeserta.length) return alert("Belum ada data peserta!");
-    
-    // Pastikan pratinjau sudah dirender untuk dipotret
+  
+  async function exportPDF_Screenshot() {
     preview();
-    
+
     const overlay = document.getElementById("loadingOverlay");
     const progressText = document.getElementById("progressText");
     overlay.style.display = "flex";
-    progressText.innerText = "MENYIAPKAN PDF...";
+    progressText.innerText = "MENYIAPKAN PDF (MODE MATEMATIKA)...";
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
-    
-    // Mengambil semua elemen halaman pratinjau
     const pages = document.querySelectorAll("#previewArea .pdf-page");
-    
+
     for (let i = 0; i < pages.length; i++) {
         progressText.innerText = `MEMPROSES HALAMAN ${i + 1}...`;
-        
+
         const canvas = await html2canvas(pages[i], {
-            scale: 2, // Kualitas tinggi
-            useCORS: true,
-            logging: false,
+            scale: 2,
             backgroundColor: "#ffffff"
         });
-        
+
         const imgData = canvas.toDataURL('image/jpeg', 0.95);
         const pdfWidth = doc.internal.pageSize.getWidth();
         const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
@@ -1000,47 +1083,57 @@ function toggleTableInput(id) {
         doc.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
     }
 
-    doc.save(`Soal_Ujian_${new Date().getTime()}.pdf`);
+    doc.save(`Soal_${Date.now()}_MATH.pdf`);
     overlay.style.display = "none";
 }
-  
-  async function exportPDF() {
-    if (!dataPeserta.length) return alert("Belum ada data peserta!");
-    
-    // Pastikan pratinjau sudah dirender untuk dipotret
-    preview();
-    
-    const overlay = document.getElementById("loadingOverlay");
-    const progressText = document.getElementById("progressText");
-    overlay.style.display = "flex";
-    progressText.innerText = "MENYIAPKAN PDF...";
-
+  function exportPDF_Text() {
     const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p', 'mm', 'a4');
-    
-    // Mengambil semua elemen halaman pratinjau
-    const pages = document.querySelectorAll("#previewArea .pdf-page");
-    
-    for (let i = 0; i < pages.length; i++) {
-        progressText.innerText = `MEMPROSES HALAMAN ${i + 1}...`;
-        
-        const canvas = await html2canvas(pages[i], {
-            scale: 2, // Kualitas tinggi
-            useCORS: true,
-            logging: false,
-            backgroundColor: "#ffffff"
-        });
-        
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
-        const pdfWidth = doc.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+    const doc = new jsPDF();
+    let y = 20;
 
-        if (i > 0) doc.addPage();
-        doc.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+    dataPeserta.forEach((p, idx) => {
+        if (idx > 0) doc.addPage();
+        y = 20;
+
+        doc.setFontSize(14);
+        doc.text(p.nama.toUpperCase(), 20, y);
+        y += 8;
+
+        doc.setFontSize(10);
+        doc.text(`MAPEL: ${p.mapel} | KELAS: ${p.kelas} | RUANG: ${p.ruangan}`, 20, y);
+        y += 10;
+
+        const soalTersaring = filterSoalValidUntukKelas(p.kelas);
+
+        soalTersaring.forEach((s, i) => {
+            doc.setFontSize(10);
+            doc.text(`Soal ${i + 1}`, 20, y);
+            y += 6;
+
+            const lines = doc.splitTextToSize(
+                s.teks.replace(/\n/g, " "),
+                170
+            );
+            doc.text(lines, 20, y);
+            y += lines.length * 5 + 4;
+        });
+    });
+
+    doc.save(`Soal_${Date.now()}_TEXT.pdf`);
+}
+  function exportPDF() {
+    if (!dataPeserta.length) {
+        alert("Belum ada data peserta!");
+        return;
     }
 
-    doc.save(`Soal_Ujian_${new Date().getTime()}.pdf`);
-    overlay.style.display = "none";
+    if (adaSimbolMatematika()) {
+        console.log("MODE: SCREENSHOT (ADA MATEMATIKA)");
+        exportPDF_Screenshot();
+    } else {
+        console.log("MODE: PDF TEKS BIASA");
+        exportPDF_Text();
+    }
 }
   
   async function getBase64FromUrl(dataUrl) {
