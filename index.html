@@ -11,7 +11,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://unpkg.com/docx@7.1.0/build/index.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 
     <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
  
@@ -154,9 +153,13 @@
         .math-tool-btn:hover { background: var(--neon); color: black; }
 
         .page {
-    width: 794px; background: #fff; color: #333;
-    margin: 20px auto; border-radius: 5px;
-    box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+    width: 794px;
+    min-height: 1123px;   /* tinggi A4 */
+    background: #fff;
+    color: #000;
+    margin: 0 auto 20px auto;
+    padding: 20px;
+    box-sizing: border-box;
 }
 
         .soal-print-item {
@@ -165,12 +168,11 @@
             margin-bottom: 5px;
         }
         
-        .soal-print-item p {
-            margin: 2px 0;
-            line-height: 1.4;
-        }
-
-        .soal-print-item:last-child { border-bottom: none; }
+        .soal-print-item {
+    padding: 10px 0;
+    margin-bottom: 5px;
+    border: none !important;
+}
         
         .excel-btn { background: #10b981; }
         .reset-btn { background: var(--danger); }
@@ -1045,17 +1047,6 @@ function toggleTableInput(id) {
         reader.readAsArrayBuffer(f);
     }
   
-  function adaSimbolMatematika() {
-    return listSoal.some(s => {
-        if (!s.teks) return false;
-
-        return (
-            /\$.*?\$/.test(s.teks) ||                 // MathJax
-            /\\(frac|sqrt|sum|int|lim)/.test(s.teks) ||
-            /<table[\s>]/i.test(s.teks)              // ⬅️ DETEKSI TABEL
-        );
-    });
-}
 
     function filterSoalValidUntukKelas(kelasPeserta) {
         const kP = kelasPeserta.trim().toUpperCase();
@@ -1085,7 +1076,7 @@ function toggleTableInput(id) {
             html += soalTersaring.map((s, idx) => `
                 <div class="soal-print-item">
                     <small style="color:#666; font-size:9px; display:block;">SOAL ${idx+1}</small>
-                    <div class="math-render-area" style="margin:5px 0; font-size:16px; line-height:1.5;">
+                    <div class="math-render-area" style="margin:5px 0; font-size:10px; line-height:1.4;">
                         ${s.teks ? s.teks.replace(/\n/g, '<br>') : ''}
                     </div>
                     ${s.gambar ? `<img src="${s.gambar}" style="width:${s.lebar}px; margin-top:5px; display:block;">` : ''}
@@ -1107,91 +1098,52 @@ function toggleTableInput(id) {
 
   
   async function exportPDF_Screenshot() {
-    preview();
+    preview(); // WAJIB: generate pratinjau dulu
 
     const overlay = document.getElementById("loadingOverlay");
     const progressText = document.getElementById("progressText");
     overlay.style.display = "flex";
-    progressText.innerText = "MENYIAPKAN PDF (MODE MATEMATIKA)...";
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
     const pages = document.querySelectorAll("#previewArea .pdf-page");
 
     for (let i = 0; i < pages.length; i++) {
-        progressText.innerText = `MEMPROSES HALAMAN ${i + 1}...`;
+
+        progressText.innerText = `MEMPROSES HALAMAN ${i+1}...`;
 
         const canvas = await html2canvas(pages[i], {
-            scale: 2,
-            backgroundColor: "#ffffff"
+            scale: 3,              // 🔥 penting agar tajam
+            useCORS: true,
+            backgroundColor: "#ffffff",
+            windowWidth: pages[i].scrollWidth,
+            windowHeight: pages[i].scrollHeight
         });
 
-        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const imgData = canvas.toDataURL("image/jpeg", 1.0);
+
         const pdfWidth = doc.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        const pdfHeight = doc.internal.pageSize.getHeight();
 
         if (i > 0) doc.addPage();
-        doc.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+
+        doc.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
     }
 
-    doc.save(`Soal_${Date.now()}_MATH.pdf`);
+    doc.save(`SOAL_${Date.now()}.pdf`);
     overlay.style.display = "none";
 }
-  function exportPDF_Text() {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    let y = 20;
-
-    dataPeserta.forEach((p, idx) => {
-        if (idx > 0) doc.addPage();
-        y = 20;
-
-        doc.setFontSize(14);
-        doc.text(p.nama.toUpperCase(), 20, y);
-        y += 8;
-
-        doc.setFontSize(10);
-        doc.text(`MAPEL: ${p.mapel} | KELAS: ${p.kelas} | RUANG: ${p.ruangan}`, 20, y);
-        y += 10;
-
-        const soalTersaring = filterSoalValidUntukKelas(p.kelas);
-
-        soalTersaring.forEach((s, i) => {
-            doc.setFontSize(10);
-            doc.text(`Soal ${i + 1}`, 20, y);
-            y += 6;
-
-            const lines = doc.splitTextToSize(
-                s.teks.replace(/\n/g, " "),
-                170
-            );
-            doc.text(lines, 20, y);
-            y += lines.length * 5 + 4;
-        });
-    });
-
-    doc.save(`Soal_${Date.now()}_TEXT.pdf`);
-}
+  
   function exportPDF() {
     if (!dataPeserta.length) {
         alert("Belum ada data peserta!");
         return;
     }
 
-    if (adaSimbolMatematika()) {
-        console.log("MODE: SCREENSHOT (ADA MATEMATIKA)");
-        exportPDF_Screenshot();
-    } else {
-        console.log("MODE: PDF TEKS BIASA");
-        exportPDF_Text();
-    }
-}
-  
-  async function getBase64FromUrl(dataUrl) {
-    if (!dataUrl) return null;
-    return dataUrl.split(',')[1];
+    exportPDF_Screenshot(); // LANGSUNG screenshot saja
 }
 
+    
 
   async function exportWord() {
     // 1. Validasi Data
@@ -1265,40 +1217,54 @@ function toggleTableInput(id) {
             children.push(headerTable);
 
             // --- ISI SOAL ---
-            for (let i = 0; i < soalTersaring.length; i++) {
-                const s = soalTersaring[i];
-                
-                // Label No Soal
-                children.push(new Paragraph({
-                    children: [new TextRun({ text: `SOAL ${i + 1}`, size: 16, color: "666666", italics: true })],
-                    spacing: { before: 200 }
-                }));
+for (let i = 0; i < soalTersaring.length; i++) {
+    const s = soalTersaring[i];
+    
+    // Label Soal
+    children.push(new Paragraph({
+        children: [
+            new TextRun({
+                text: `SOAL ${i + 1}`,
+                size: 16,
+                color: "666666",
+                italics: true
+            })
+        ],
+        spacing: { before: 200 }
+    }));
 
-                // Teks Soal
-                if (s.teks) {
-                    children.push(new Paragraph({
-                        children: [new TextRun({ text: s.teks, size: 22 })],
-                        spacing: { after: 100 }
-                    }));
-                }
+    // Teks Soal
+    children.push(new Paragraph({
+        children: [
+            new TextRun({
+                text: s.teks || "",
+                size: 20
+            })
+        ],
+        spacing: { after: 100 }
+    }));
 
-                // Gambar Soal (Jika Ada)
-                if (s.gambar) {
-                    const imgData = s.gambar.split(",")[1];
-                    const dim = await getImageDimensions(s.gambar);
-                    const ratio = dim.h / dim.w;
-                    const displayWidth = s.lebar || 200;
-                    
-                    children.push(new Paragraph({
-                        children: [
-                            new ImageRun({
-                                data: Uint8Array.from(atob(imgData), c => c.charCodeAt(0)),
-                                transformation: { width: displayWidth, height: displayWidth * ratio },
-                            }),
-                        ],
-                    }));
-                }
-            }
+    // Gambar Soal (Jika Ada)
+    if (s.gambar) {
+        const imgData = s.gambar.split(",")[1];
+        const dim = await getImageDimensions(s.gambar);
+        const ratio = dim.h / dim.w;
+        const displayWidth = s.lebar || 200;
+
+        children.push(new Paragraph({
+            children: [
+                new ImageRun({
+                    data: Uint8Array.from(atob(imgData), c => c.charCodeAt(0)),
+                    transformation: {
+                        width: displayWidth,
+                        height: displayWidth * ratio
+                    },
+                }),
+            ],
+        }));
+    }
+}
+
 
             // Tambahkan Page Break kecuali untuk peserta terakhir
             sections.push({ 
