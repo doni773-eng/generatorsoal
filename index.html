@@ -231,10 +231,38 @@
         }
 
         @media print {
-    body { background: white !important; padding: 0 !important; }
-    .container, .theme-switch, .modal-controls, #loadingOverlay { display: none !important; }
-    #fullScreenModal { position: static; display: block !important; padding: 0 !important; background: white !important; overflow: visible !important; }
-    .page { box-shadow: none !important; margin: 0 !important; border-bottom: none !important; page-break-after: always; }
+    /* Sembunyikan seluruh elemen di layar */
+    body * {
+        visibility: hidden;
+    }
+    
+    /* Hanya tampilkan area print dan isinya */
+    #fullScreenModal, #fullScreenModal * {
+        visibility: visible;
+    }
+
+    #fullScreenModal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    /* Sembunyikan tombol navigasi agar tidak ikut ter-print */
+    .modal-controls {
+        display: none !important;
+    }
+
+    /* Pengaturan Kertas A4 */
+    .page {
+        margin: 0 !important;
+        border: none !important;
+        box-shadow: none !important;
+        page-break-after: always; /* Setiap peserta ganti kertas */
+    }
 }
 
         @media (max-width: 768px) {
@@ -409,7 +437,6 @@
 
     <div class="section" style="display: flex; gap: 10px; background: transparent; border: none; flex-wrap: wrap;">
         <button onclick="preview()" style="flex: 1; background: #334155; font-size: 16px;">Pratinjau List</button>
-        <button onclick="openFullscreenPreview()" style="flex: 1; background: #00ff88; color: black; font-size: 16px;">PRATINJAU FULL & PRINT</button>
         <button onclick="exportWord()" style="flex: 1; font-size: 16px; background: var(--neon2);">Ekspor Word</button>
         <button onclick="exportPDF()" class="pdf-btn">Ekspor PDF</button>
 
@@ -441,20 +468,34 @@
 
     /* FITUR BARU: FULLSCREEN & PRINT */
     function openFullscreenPreview() {
-        if(!dataPeserta.length) return alert("Belum ada data peserta!");
-        preview(); // Jalankan preview internal dulu
-        
-        const areaPreview = document.getElementById("previewArea").innerHTML;
-        if(!areaPreview) return;
-
-        document.getElementById("printArea").innerHTML = areaPreview;
-        document.getElementById("fullScreenModal").style.display = "block";
-        document.body.style.overflow = "hidden";
-
-        if (window.MathJax) {
-            MathJax.typesetPromise([document.getElementById("printArea")]);
-        }
+    // 1. Ambil data dari list soal yang sudah di-generate di previewArea
+    preview(); 
+    
+    const content = document.getElementById("previewArea").innerHTML;
+    
+    if (!content || content.trim() === "") {
+        alert("Pratinjau kosong! Masukkan soal dan peserta terlebih dahulu.");
+        return;
     }
+
+    // 2. Masukkan ke dalam printArea di dalam Modal
+    const printArea = document.getElementById("printArea");
+    printArea.innerHTML = content;
+
+    // 3. Tampilkan Modal Fullscreen
+    document.getElementById("fullScreenModal").style.display = "block";
+    document.body.style.overflow = "hidden";
+
+    // 4. Render ulang MathJax agar rumus matematika muncul di modal
+    if (window.MathJax) {
+        MathJax.typesetPromise([printArea]);
+    }
+}
+
+function printDirectly() {
+    // Langsung buka dialog print browser
+    window.print();
+}
   
   function cariPeserta(keyword) {
     const container = document.getElementById("daftarPeserta");
