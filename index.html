@@ -1097,52 +1097,47 @@ function toggleTableInput(id) {
     }
 
   
-  async function exportPDF_Screenshot() {
-    preview(); // WAJIB: generate pratinjau dulu
-
-    const overlay = document.getElementById("loadingOverlay");
-    const progressText = document.getElementById("progressText");
-    overlay.style.display = "flex";
-
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF('p', 'mm', 'a4');
-    const pages = document.querySelectorAll("#previewArea .pdf-page");
-
-    for (let i = 0; i < pages.length; i++) {
-
-        progressText.innerText = `MEMPROSES HALAMAN ${i+1}...`;
-
-        const canvas = await html2canvas(pages[i], {
-            scale: 3,              // 🔥 penting agar tajam
-            useCORS: true,
-            backgroundColor: "#ffffff",
-            windowWidth: pages[i].scrollWidth,
-            windowHeight: pages[i].scrollHeight
-        });
-
-        const imgData = canvas.toDataURL("image/jpeg", 1.0);
-
-        const pdfWidth = doc.internal.pageSize.getWidth();
-        const pdfHeight = doc.internal.pageSize.getHeight();
-
-        if (i > 0) doc.addPage();
-
-        doc.addImage(imgData, "JPEG", 0, 0, pdfWidth, pdfHeight);
-    }
-
-    doc.save(`SOAL_${Date.now()}.pdf`);
-    overlay.style.display = "none";
-}
   
-  function exportPDF() {
-    if (!dataPeserta.length) {
-        alert("Belum ada data peserta!");
-        return;
+async function exportPDF() {
+    if (!dataPeserta || dataPeserta.length === 0) return alert("Data peserta kosong!");
+    
+    const overlay = document.getElementById("loadingOverlay");
+    if (overlay) overlay.style.display = "flex";
+
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('p', 'mm', 'a4');
+        const pages = document.querySelectorAll(".page");
+
+        for (let i = 0; i < pages.length; i++) {
+            const progress = Math.round(((i + 1) / pages.length) * 100);
+            document.getElementById("progressText").innerText = `Memproses: ${progress}% (${i + 1} / ${pages.length})`;
+
+            if (i > 0) doc.addPage();
+
+            // OPTIMASI: Gunakan JPEG dengan kualitas 0.8 untuk mempercepat & memperkecil ukuran file
+            const canvas = await html2canvas(pages[i], {
+                scale: 1.5, // Sedikit diturunkan dari 2 agar lebih cepat tapi tetap tajam
+                useCORS: true,
+                logging: false,
+                removeContainer: true // Membantu membersihkan memori browser saat proses
+            });
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.8);
+            doc.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST'); // 'FAST' mempercepat kompresi
+            
+            // Memberi jeda napas bagi browser setiap 10 halaman agar tidak "Not Responding"
+            if (i % 10 === 0) await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+        doc.save(`SOAL_GEN_TOTAL_${dataPeserta.length}.pdf`);
+    } catch (err) {
+        console.error(err);
+        alert("Error: " + err.message);
+    } finally {
+        if (overlay) overlay.style.display = "none";
     }
-
-    exportPDF_Screenshot(); // LANGSUNG screenshot saja
 }
-
     
 
   async function exportWord() {
