@@ -164,13 +164,13 @@
 
         .soal-print-item {
             border-bottom: 1px dotted #ccc;
-            padding: 10px 0;
-            margin-bottom: 5px;
+            padding: 1px 0;
+            margin-bottom: 1px;
         }
         
         .soal-print-item {
-    padding: 10px 0;
-    margin-bottom: 5px;
+    padding: 1px 0;
+    margin-bottom: 1px;
     border: none !important;
 }
         
@@ -403,6 +403,9 @@
 <button onclick="tambahInputSoal()" style="width: 100%; background: #0ea5e9;">
     + TAMBAHKAN SOAL BARU
 </button>
+<button onclick="tambahTeksBebas()" style="width: 100%; background:#64748b; margin-top:8px;">
+    + TAMBAHKAN TEKS / KETERANGAN (TANPA NOMOR)
+</button>
 
     <div class="section" style="display: flex; gap: 10px; background: transparent; border: none; flex-wrap: wrap;">
         <button onclick="preview()" style="flex: 1; background: #334155; font-size: 16px;">Pratinjau List</button>
@@ -416,6 +419,7 @@
 <script>
     let dataPeserta = [];
     let listSoal = [];
+    let listTeksBebas = [];
     let OPSI_KELAS = ["X MIPA", "X IPS", "XI MIPA", "XI IPS", "XII MIPA", "XII IPS"];
     let pesertaVisible = false;
 
@@ -466,6 +470,54 @@
             card.style.display = "none";
         }
     });
+}
+  
+  function tambahTeksBebas() {
+    const id = Date.now() + Math.random();
+
+    const div = document.createElement("div");
+    div.id = `teks-${id}`;
+    div.style.cssText = `
+        margin-bottom:15px;
+        padding:15px;
+        border-radius:12px;
+        background:rgba(255,255,255,0.06);
+        border:1px dashed var(--border);
+    `;
+
+    div.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <b style="font-size:11px; color:#94a3b8; letter-spacing:1px;">
+                TEKS BEBAS / KETERANGAN
+            </b>
+            <button onclick="hapusTeksBebas('${id}')"
+                style="background:var(--danger); padding:4px 10px; margin:0;">
+                Hapus
+            </button>
+        </div>
+
+        <textarea
+            style="width:100%; min-height:80px; margin-top:10px;"
+            placeholder="Contoh: Petunjuk pengerjaan, narasi, bacaan, stimulus, dll..."
+            oninput="updateTeksBebas('${id}', this.value)"></textarea>
+    `;
+
+    document.getElementById("containerSoal").appendChild(div);
+
+    listTeksBebas.push({
+        id: id,
+        teks: ""
+    });
+}
+  
+  function updateTeksBebas(id, val) {
+    const t = listTeksBebas.find(x => x.id == id);
+    if (t) t.teks = val;
+}
+
+function hapusTeksBebas(id) {
+    document.getElementById(`teks-${id}`).remove();
+    listTeksBebas = listTeksBebas.filter(x => x.id != id);
 }
   
   function toggleMathPanel(id) {
@@ -1073,10 +1125,24 @@ function toggleTableInput(id) {
                     </div>
                     <img src="${p.qr}" width="60" style="border:1px solid #000; padding:2px;">
                 </div>`;
+          listTeksBebas.forEach(t => {
+    if (t.teks && t.teks.trim() !== "") {
+        html += `
+            <div style="
+                margin:1px 0;
+                padding:2px;
+                font-size:10px;
+                line-height:1.4;
+            ">
+                ${t.teks.replace(/\n/g,'<br>')}
+            </div>
+        `;
+    }
+});
             html += soalTersaring.map((s, idx) => `
                 <div class="soal-print-item">
                     <small style="color:#666; font-size:9px; display:block;">SOAL ${idx+1}</small>
-                    <div class="math-render-area" style="margin:5px 0; font-size:10px; line-height:1.4;">
+                    <div class="math-render-area" style="margin:1px 0; font-size:10px; line-height:1;">
                         ${s.teks ? s.teks.replace(/\n/g, '<br>') : ''}
                     </div>
                     ${s.gambar ? `<img src="${s.gambar}" style="width:${s.lebar}px; margin-top:5px; display:block;">` : ''}
