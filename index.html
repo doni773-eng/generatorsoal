@@ -1237,7 +1237,7 @@ async function exportPDF() {
             if (i % 10 === 0) await new Promise(resolve => setTimeout(resolve, 100));
         }
 
-        doc.save(`SOAL_GEN_TOTAL_${dataPeserta.length}.pdf`);
+        doc.save(`SOAL_ULANGAN_${dataPeserta.length}.pdf`);
     } catch (err) {
         console.error(err);
         alert("Error: " + err.message);
